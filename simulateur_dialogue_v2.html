@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur de Dialogue</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#F0F4F8;min-height:100vh;padding:16px}
+#app{max-width:580px;margin:0 auto}
+h1{font-size:21px;font-weight:700;color:#111;margin-bottom:4px}
+.subtitle{font-size:13px;color:#888;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sc-card{background:white;border-radius:14px;padding:16px;border:2px solid #eee;cursor:pointer;transition:all .15s;text-align:center}
+.sc-card:hover{border-color:#378ADD;transform:translateY(-1px)}
+.sc-card.done{border-color:#639922;background:#f8fff4}
+.sc-icon{font-size:32px;margin-bottom:6px}
+.sc-name{font-size:13px;font-weight:700;color:#111}
+.sc-done{font-size:11px;color:#639922;margin-top:4px;font-weight:600}
+.chat-box{background:white;border-radius:16px;overflow:hidden;margin-bottom:12px;border:1px solid #eee}
+.chat-head{padding:12px 16px;background:#378ADD;color:white;display:flex;align-items:center;gap:10px}
+.chat-head-icon{font-size:26px}
+.chat-head-name{font-size:14px;font-weight:700}
+.chat-head-ctx{font-size:11px;opacity:.85}
+.chat-msgs{padding:14px;min-height:180px;display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto}
+.bubble-wrap{display:flex;flex-direction:column}
+.bubble-wrap.me{align-items:flex-end}
+.bubble-lbl{font-size:10px;color:#aaa;margin-bottom:2px}
+.bubble{max-width:88%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5}
+.bubble.other{background:#f0f0f0;color:#111;border-bottom-left-radius:4px}
+.bubble.me-ok{background:#378ADD;color:white;border-bottom-right-radius:4px}
+.bubble.me-warn{background:#FAEEDA;color:#633806;border:1.5px solid #BA7517;border-bottom-right-radius:4px}
+.bubble.me-bad{background:#FCEBEB;color:#791F1F;border:1.5px solid #E24B4A;border-bottom-right-radius:4px}
+.reaction{border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:10px;line-height:1.5;border:1px solid}
+.r-ok{background:#EAF3DE;color:#27500A;border-color:#97C459}
+.r-warn{background:#FAEEDA;color:#633806;border-color:#FAC775}
+.r-bad{background:#FCEBEB;color:#791F1F;border-color:#F09595}
+.choices{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.choice{background:white;border:2px solid #ddd;border-radius:12px;padding:12px 14px;font-size:13px;color:#111;cursor:pointer;text-align:left;line-height:1.4;transition:all .13s;display:flex;align-items:flex-start;gap:8px}
+.choice:hover:not([disabled]){border-color:#378ADD;background:#EBF4FF}
+.choice[disabled]{cursor:default}
+.ltr{min-width:22px;height:22px;border-radius:6px;background:#eee;color:#555;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ltr-ok{background:#378ADD;color:white}
+.ltr-warn{background:#BA7517;color:white}
+.ltr-bad{background:#E24B4A;color:white}
+.ltr-reveal{background:#639922;color:white}
+.choice.dim{opacity:.4}
+.voice-bar{display:flex;align-items:center;gap:10px;background:white;border-radius:12px;padding:10px 14px;margin-bottom:10px;border:1px solid #eee}
+.mic-btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mic-idle{background:#eee;color:#555}
+.mic-on{background:#E24B4A;color:white;animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.voice-status{font-size:12px;color:#888;flex:1;line-height:1.4}
+.speak-btn{background:#f0f0f0;border:none;border-radius:8px;padding:6px 10px;font-size:11px;color:#555;cursor:pointer;white-space:nowrap}
+.speak-btn:hover{background:#378ADD;color:white}
+.prog{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.prog-dot{height:7px;border-radius:4px;background:#ddd;width:28px}
+.pd-ok{background:#639922}
+.pd-warn{background:#BA7517}
+.pd-bad{background:#E24B4A}
+.pd-active{background:#378ADD}
+.btn{padding:10px 20px;border-radius:10px;border:1.5px solid #ddd;background:white;cursor:pointer;font-size:13px;font-weight:600;color:#333;margin-right:8px;margin-bottom:8px;display:inline-block}
+.btn:hover{background:#f0f0f0}
+.btn-p{background:#378ADD;color:white;border-color:#378ADD}
+.btn-p:hover{background:#185FA5}
+.btn-back{background:none;border:none;color:#888;cursor:pointer;font-size:13px;padding:0;margin-bottom:14px;display:flex;align-items:center;gap:4px}
+.score-big{font-size:48px;font-weight:700;text-align:center;margin:14px 0 4px;color:#111}
+.score-sub{text-align:center;font-size:14px;color:#555;margin-bottom:16px;line-height:1.5}
+.tip{background:#E6F1FB;border-radius:12px;padding:13px;font-size:13px;color:#0C447C;line-height:1.6;margin-bottom:14px}
+.error-list{background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;margin-bottom:14px}
+.error-item{padding:11px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;line-height:1.5}
+.error-item:last-child{border-bottom:none}
+.error-q{color:#888;font-size:11px;margin-bottom:3px}
+.error-said{color:#E24B4A;margin-bottom:2px}
+.error-better{color:#27500A}
+.badges{display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.badge{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─── SCÉNARIOS ────────────────────────────────────────────────────────────────
+// quality: "ok"=bonne, "warn"=passable, "bad"=mauvaise
+// Les bonnes réponses sont placées à des positions variées (pas toujours en 1er)
+const SCENARIOS=[
+{
+  id:"livraison",icon:"📦",name:"Commander une livraison",who:"Pizza Flash",ctx:"Tu commandes par téléphone",
+  start:"s1",
+  steps:{
+    s1:{other:"Allô, Pizza Flash, bonsoir !",
+      choices:[
+        {text:"Euh… vous livrez jusqu'à quelle heure ?",q:"warn",next:"s1w",r:"Jusqu'à 23h. Vous souhaitez commander ?",tip:"C'est une question hors sujet pour commencer. Mieux vaut d'abord expliquer ce que tu veux."},
+        {text:"(Silence, tu attends qu'il parle)",q:"bad",next:"s1b",r:"Allô ? Je vous entends ?",tip:"Le silence au téléphone est gênant. Il faut se présenter et expliquer ce qu'on veut."},
+        {text:"Bonsoir ! Je voudrais commander une pizza en livraison s'il vous plaît.",q:"ok",next:"s2",r:"Bien sûr ! Qu'est-ce que vous souhaitez ?"},
+        {text:"Ouais je veux une pizza, vous livrez ?",q:"warn",next:"s1w2",r:"Oui on livre. C'est pour quelle adresse ?",tip:"La formulation est un peu brusque. Un bonjour et une demande polie c'est mieux."},
+      ]},
+    s1b:{other:"Allô ? Je vous entends ?",
+      choices:[
+        {text:"Oui pardon ! Bonsoir, je voudrais commander une pizza s'il vous plaît.",q:"ok",next:"s2",r:"Très bien ! Qu'est-ce vous désirez ?"},
+        {text:"Oui oui je suis là.",q:"warn",next:"s1w3",r:"D'accord… vous souhaitez commander ?",tip:"Il faut expliquer pourquoi tu appelles, pas juste confirmer que tu es là."},
+        {text:"Ah oui, vous vendez des pizzas ?",q:"bad",next:"s1b2",r:"Oui c'est une pizzeria. Vous souhaitez commander ?",tip:"Appeler une pizzeria pour demander si elle vend des pizzas c'est très étrange."},
+        {text:"Bonsoir, je voudrais une pizza Margherita grande en livraison.",q:"ok",next:"s2b",r:"Parfait ! Et votre adresse ?"},
+      ]},
+    s1b2:{other:"Oui c'est une pizzeria. Vous souhaitez commander ?",
+      choices:[
+        {text:"Oui, une Margherita grande en livraison.",q:"ok",next:"s2b",r:"Très bien ! Votre adresse ?"},
+        {text:"Oui mais c'est pour savoir.",q:"bad",next:"s2",r:"D'accord. Qu'est-ce que vous voulez commander ?",tip:"Évite les réponses vagues, sois direct sur ce que tu veux."},
+        {text:"Oui s'il vous plaît, une pizza.",q:"warn",next:"s2",r:"Laquelle vous voulez ?",tip:"Dis directement le nom de la pizza et la taille."},
+        {text:"Oui bonsoir, une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+      ]},
+    s1w:{other:"On livre jusqu'à 23h. Vous souhaitez commander ?",
+      choices:[
+        {text:"Oui, une Margherita grande en livraison s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Votre adresse ?"},
+        {text:"Oui.",q:"warn",next:"s2",r:"Qu'est-ce que vous désirez ?",tip:"Un simple 'oui' ne suffit pas, explique ta commande."},
+        {text:"Peut-être, je sais pas encore.",q:"bad",next:"s1w3",r:"D'accord, rappelez quand vous êtes prêt.",tip:"N'appelle pas si tu n'es pas prêt à commander."},
+        {text:"Oui, je voudrais passer une commande.",q:"ok",next:"s2",r:"Qu'est-ce que vous désirez ?"},
+      ]},
+    s1w2:{other:"Oui on livre. C'est pour quelle adresse ?",
+      choices:[
+        {text:"Attendez, j'ai pas encore choisi ma pizza.",q:"warn",next:"s2",r:"Pas de problème, qu'est-ce que vous voulez ?",tip:"Mieux vaut avoir choisi avant d'appeler."},
+        {text:"Une Margherita grande, au 12 rue des Lilas à Bordeaux.",q:"ok",next:"s3",r:"Parfait, comptez 30 min. Vous payez comment ?"},
+        {text:"Je veux une pizza.",q:"bad",next:"s2",r:"Laquelle vous voulez ?",tip:"Sois précis sur le nom et la taille."},
+        {text:"Une Margherita grande s'il vous plaît, avant de donner l'adresse.",q:"ok",next:"s2b",r:"D'accord ! Votre adresse ?"},
+      ]},
+    s1w3:{other:"D'accord, rappelez quand vous êtes prêt.",
+      choices:[
+        {text:"Attendez ! Je veux une Margherita grande en livraison.",q:"ok",next:"s2b",r:"Pas de souci ! Votre adresse ?"},
+        {text:"Ok merci.",q:"bad",next:"end_bad",r:"",tip:""},
+        {text:"Oui pardon, je voulais une pizza.",q:"warn",next:"s2",r:"Laquelle ?",tip:""},
+        {text:"Pardon, je suis prêt. Une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+      ]},
+    s2:{other:"Qu'est-ce que vous désirez ?",
+      choices:[
+        {text:"Votre meilleure pizza.",q:"bad",next:"s2c",r:"On a plusieurs pizzas… vous voulez quoi comme garniture ?",tip:"'Votre meilleure' n'est pas une commande précise. Connais ton menu avant d'appeler."},
+        {text:"Une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Très bien ! Votre adresse ?"},
+        {text:"Je sais pas trop, vous avez quoi ?",q:"warn",next:"s2d",r:"On a Margherita, 4 fromages, Reine, Chorizo. Laquelle ?",tip:"Il vaut mieux regarder le menu avant d'appeler."},
+        {text:"Une grande pizza avec du fromage.",q:"warn",next:"s2c",r:"Margherita ou 4 fromages ?",tip:"Donne le nom exact de la pizza que tu veux."},
+      ]},
+    s2b:{other:"Votre adresse s'il vous plaît ?",
+      choices:[
+        {text:"C'est pas loin d'ici.",q:"bad",next:"s2b2",r:"Je n'ai pas compris, vous habitez où exactement ?",tip:"Le livreur ne sait pas où tu es ! Donne toujours une adresse complète."},
+        {text:"12 rue des Lilas, appartement 3, Bordeaux.",q:"ok",next:"s3",r:"Parfait, comptez 30 minutes. Comment vous payez ?"},
+        {text:"Bordeaux.",q:"bad",next:"s2b2",r:"Bordeaux c'est grand ! Quelle rue et quel numéro ?",tip:"Il faut donner le numéro, la rue, et la ville."},
+        {text:"12 rue des Lilas à Bordeaux, appartement 3 au 2ème étage.",q:"ok",next:"s3",r:"Très bien noté ! 30 minutes. Vous payez comment ?"},
+      ]},
+    s2b2:{other:"Quelle rue et quel numéro ?",
+      choices:[
+        {text:"Rue des Lilas.",q:"warn",next:"s2b3",r:"Et le numéro ?",tip:"Le numéro de rue est essentiel."},
+        {text:"12 rue des Lilas, appartement 3, Bordeaux.",q:"ok",next:"s3",r:"Parfait ! 30 minutes. Comment vous payez ?"},
+        {text:"Je vous envoie un SMS.",q:"bad",next:"s2b3",r:"On ne reçoit pas de SMS. Votre adresse s'il vous plaît ?",tip:"Ne propose pas d'envoyer un SMS, donne l'adresse directement."},
+        {text:"12 rue des Lilas à Bordeaux.",q:"ok",next:"s2b4",r:"Et l'appartement ou l'étage ?"},
+      ]},
+    s2b3:{other:"Votre adresse complète s'il vous plaît ?",
+      choices:[
+        {text:"12 rue des Lilas, appartement 3, Bordeaux.",q:"ok",next:"s3",r:"Merci ! 30 minutes. Vous payez comment ?"},
+        {text:"(Tu donnes l'adresse correctement)",q:"ok",next:"s3",r:"Parfait ! Comptez 30 minutes."},
+        {text:"Je sais plus mon adresse.",q:"bad",next:"end_bad",r:"",tip:"Il faut connaître son adresse pour commander une livraison."},
+        {text:"C'est au 12 rue des Lilas 3ème étage Bordeaux.",q:"ok",next:"s3",r:"Noté ! 30 minutes."},
+      ]},
+    s2b4:{other:"Et l'appartement ou l'étage ?",
+      choices:[
+        {text:"Appartement 3, 2ème étage.",q:"ok",next:"s3",r:"Parfait ! 30 minutes. Comment vous payez ?"},
+        {text:"Rez-de-chaussée.",q:"ok",next:"s3",r:"Noté ! Comment vous payez ?"},
+        {text:"Je sais pas.",q:"bad",next:"s3",r:"D'accord, le livreur sonnera. Comment vous payez ?",tip:"Essaie de connaître ton numéro d'appartement."},
+        {text:"3ème porte à gauche.",q:"warn",next:"s3",r:"Hmm d'accord… je note. Comment vous payez ?",tip:"Donne le numéro d'appartement, pas des indications vagues."},
+      ]},
+    s2c:{other:"Margherita ou 4 fromages ?",
+      choices:[
+        {text:"Margherita s'il vous plaît, grande taille.",q:"ok",next:"s2b",r:"Parfait ! Votre adresse ?"},
+        {text:"Les deux.",q:"bad",next:"s2c2",r:"Deux pizzas donc ? Ça fait 20€. Votre adresse ?",tip:"Sois sûr de ta commande avant de répondre."},
+        {text:"4 fromages grande.",q:"ok",next:"s2b",r:"D'accord ! Votre adresse ?"},
+        {text:"Celle avec le plus de fromage.",q:"warn",next:"s2c3",r:"4 fromages alors. Grande ou petite ?",tip:"Donne le nom exact."},
+      ]},
+    s2c2:{other:"Deux pizzas c'est bien ça ?",
+      choices:[
+        {text:"Non pardon, une seule, une Margherita grande.",q:"ok",next:"s2b",r:"Pas de souci ! Adresse ?"},
+        {text:"Oui les deux.",q:"warn",next:"s2b",r:"D'accord. Votre adresse ?",tip:"Vérifie bien ta commande avant de confirmer."},
+        {text:"Je sais plus ce que je veux.",q:"bad",next:"s2",r:"Je vous laisse choisir et rappeler ?",tip:"Décide avant d'appeler."},
+        {text:"Oui non… juste une Margherita.",q:"warn",next:"s2b",r:"D'accord ! Adresse ?",tip:""},
+      ]},
+    s2c3:{other:"Grande ou petite ?",
+      choices:[
+        {text:"Grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+        {text:"Je sais pas.",q:"bad",next:"s2b",r:"Je vous mets une grande alors. Adresse ?",tip:"Choisis ta taille avant d'appeler."},
+        {text:"Grande.",q:"ok",next:"s2b",r:"Très bien ! Adresse ?"},
+        {text:"La moins chère.",q:"warn",next:"s2b",r:"La petite est moins chère. Adresse ?",tip:"Dis grande ou petite, pas 'la moins chère'."},
+      ]},
+    s2d:{other:"Margherita, 4 fromages, Reine ou Chorizo ?",
+      choices:[
+        {text:"Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+        {text:"La première.",q:"bad",next:"s2b",r:"La Margherita alors. Adresse ?",tip:"Dis le nom de la pizza, pas 'la première'."},
+        {text:"Reine grande.",q:"ok",next:"s2b",r:"Très bien ! Adresse ?"},
+        {text:"Euh… Margherita je pense.",q:"warn",next:"s2b2b",r:"Vous êtes sûr ?",tip:"Décide clairement avant de répondre."},
+      ]},
+    s2b2b:{other:"Vous êtes sûr pour la Margherita ?",
+      choices:[
+        {text:"Oui, Margherita grande, j'en suis sûr.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+        {text:"En fait non, 4 fromages.",q:"ok",next:"s2b",r:"D'accord ! Adresse ?"},
+        {text:"Peut-être, ouais.",q:"bad",next:"s2b",r:"Je mets Margherita. Adresse ?",tip:"Sois ferme dans tes choix."},
+        {text:"Oui Margherita.",q:"ok",next:"s2b",r:"Noté ! Adresse ?"},
+      ]},
+    s3:{other:"Vous payez comment ?",
+      choices:[
+        {text:"La carte de mon frère.",q:"bad",next:"s3b",r:"Il faut payer avec votre propre carte. Espèces ou votre carte ?",tip:"On ne paie pas avec la carte de quelqu'un d'autre sans permission."},
+        {text:"Par carte bancaire.",q:"ok",next:"end",r:"Parfait, le livreur aura un terminal. À tout à l'heure !"},
+        {text:"Je sais pas encore.",q:"warn",next:"s3c",r:"On accepte espèces ou carte. Vous préférez quoi ?",tip:"Décide du mode de paiement avant de commander."},
+        {text:"En espèces, j'aurai l'appoint.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+      ]},
+    s3b:{other:"Votre propre carte ou espèces ?",
+      choices:[
+        {text:"En espèces s'il vous plaît.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+        {text:"Ma carte à moi alors.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+        {text:"J'ai pas d'argent.",q:"bad",next:"end_bad",r:"",tip:"Il faut s'assurer d'avoir de l'argent avant de commander."},
+        {text:"Par carte.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+      ]},
+    s3c:{other:"Espèces ou carte, vous préférez quoi ?",
+      choices:[
+        {text:"Espèces.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+        {text:"Carte.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+        {text:"Les deux.",q:"bad",next:"s3c2",r:"Il faut choisir un seul mode de paiement.",tip:"Choisis un seul mode de paiement."},
+        {text:"Peu importe.",q:"warn",next:"s3c2",r:"Espèces alors. À tout à l'heure !",tip:"Dis clairement comment tu veux payer."},
+      ]},
+    s3c2:{other:"Espèces ou carte, un seul.",
+      choices:[
+        {text:"Espèces.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+        {text:"Carte.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+        {text:"Je sais pas.",q:"bad",next:"end",r:"Je mets espèces. À tout à l'heure !",tip:"Il faut savoir comment on va payer."},
+        {text:"Espèces s'il vous plaît.",q:"ok",next:"end",r:"Noté ! À tout à l'heure !"},
+      ]},
+    end:{other:"Parfait ! 30 minutes, bonne soirée !",
+      choices:[
+        {text:"Super, merci bonne soirée !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un simple 'ok' c'est un peu sec. Un merci et bonne soirée c'est mieux."},
+        {text:"(Tu raccroches sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours dire au revoir avant de raccrocher."},
+        {text:"Merci beaucoup, à tout à l'heure !",q:"ok",next:null,r:""},
+      ]},
+    end_bad:{other:"Je vous rappelle quand vous êtes prêt.",
+      choices:[
+        {text:"Ok merci.",q:"warn",next:null,r:"",tip:"La conversation n'a pas abouti. Prépare ta commande avant d'appeler."},
+        {text:"Non attendez ! Je veux une Margherita grande.",q:"ok",next:"s2b",r:"Très bien ! Adresse ?"},
+        {text:"(Tu raccroches)",q:"bad",next:null,r:"",tip:"La conversation s'est mal terminée sans commande passée."},
+        {text:"Pardon, je me reprends. Une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Pas de problème ! Adresse ?"},
+      ]},
+  }
+},
+{
+  id:"pharmacie",icon:"💊",name:"À la pharmacie",who:"Pharmacien(ne)",ctx:"Tu demandes un médicament",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonjour ! Je peux vous aider ?",
+      choices:[
+        {text:"Ouais j'ai mal.",q:"bad",next:"s1b",r:"Mal où ?",tip:"Sois plus précis et poli. Dis bonjour et explique clairement ton problème."},
+        {text:"Bonjour ! Oui, j'ai une ordonnance de mon médecin.",q:"ok",next:"s2",r:"Très bien, je peux la voir ?"},
+        {text:"Bonjour, j'ai mal à la tête depuis hier soir, j'ai de la fièvre.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments en ce moment ?"},
+        {text:"Bonjour, vous avez du Doliprane ?",q:"warn",next:"s2c",r:"Oui on en a. C'est pour quel motif ?",tip:"Mieux vaut d'abord expliquer ton problème plutôt que de demander un médicament précis sans contexte."},
+      ]},
+    s1b:{other:"Vous avez mal où ?",
+      choices:[
+        {text:"À la tête, depuis hier, avec de la fièvre.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"Partout.",q:"bad",next:"s1c",r:"Je n'ai pas bien compris. Pouvez-vous décrire votre douleur ?",tip:"Sois précis sur l'endroit où tu as mal."},
+        {text:"Bonjour pardon. J'ai mal à la tête et de la fièvre depuis hier.",q:"ok",next:"s2b",r:"D'accord. Vous prenez autres choses en ce moment ?"},
+        {text:"À la tête.",q:"ok",next:"s2d",r:"Depuis combien de temps ?"},
+      ]},
+    s1c:{other:"Décrivez votre douleur.",
+      choices:[
+        {text:"J'ai mal à la tête depuis hier et j'ai 38.5 de fièvre.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"C'est douloureux.",q:"bad",next:"s2b",r:"Je vais vous donner du paracétamol.",tip:"'C'est douloureux' n'explique rien. Dis où et depuis quand."},
+        {text:"Tête et gorge depuis 2 jours.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"Mal de tête intense depuis hier soir.",q:"ok",next:"s2d",r:"Vous avez de la fièvre ?"},
+      ]},
+    s2:{other:"Je peux voir l'ordonnance ?",
+      choices:[
+        {text:"Oui voilà, c'est le docteur Martin qui me l'a donnée.",q:"ok",next:"s3",r:"Merci. Vous avez des allergies connues ?"},
+        {text:"Je l'ai oubliée.",q:"bad",next:"s2e",r:"Sans ordonnance je ne peux pas vous délivrer ces médicaments. Il faudra revenir.",tip:"Toujours vérifier qu'on a son ordonnance avant d'aller à la pharmacie."},
+        {text:"La voilà.",q:"ok",next:"s3",r:"Merci. Vous avez des allergies ?"},
+        {text:"Attendez je cherche…",q:"warn",next:"s2f",r:"Prenez votre temps.",tip:"Il vaut mieux avoir ses documents prêts avant de passer au comptoir."},
+      ]},
+    s2b:{other:"Vous prenez d'autres médicaments en ce moment ?",
+      choices:[
+        {text:"Non, rien du tout.",q:"ok",next:"s3b",r:"Bien. Je vous conseille du paracétamol, 1g toutes les 6h max. Pas plus de 4 par jour."},
+        {text:"Je sais pas, des trucs.",q:"bad",next:"s2g",r:"C'est important de le savoir. Vous pouvez vérifier dans votre sac ?",tip:"Il faut connaître les médicaments qu'on prend, c'est important pour la sécurité."},
+        {text:"Oui, je prends un médicament pour la tension.",q:"ok",next:"s3c",r:"Important ! Le nom du médicament ?"},
+        {text:"Seulement de la vitamine C.",q:"ok",next:"s3b",r:"D'accord, c'est compatible. Paracétamol 1g toutes les 6h."},
+      ]},
+    s2c:{other:"C'est pour quel motif ?",
+      choices:[
+        {text:"J'ai mal à la tête et de la fièvre depuis hier.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"Pour me soigner.",q:"bad",next:"s1c",r:"Je comprends, mais soigner quoi exactement ?",tip:"Explique ton symptôme précis."},
+        {text:"Mal de tête avec 38 de fièvre.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments en cours ?"},
+        {text:"J'ai vu sur internet que c'est bon pour moi.",q:"bad",next:"s2c2",r:"Je préfère que vous me décriviez vos symptômes plutôt que de vous fier à internet.",tip:"Ne te base pas sur internet pour choisir tes médicaments. Décris tes symptômes."},
+      ]},
+    s2c2:{other:"Décrivez vos symptômes s'il vous plaît.",
+      choices:[
+        {text:"Mal de tête depuis hier, 38.5 de fièvre.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+        {text:"C'est internet qui dit que j'ai besoin de Doliprane.",q:"bad",next:"s3b",r:"Je vous donne du paracétamol mais suivez mes conseils, pas internet.",tip:"Fais confiance au pharmacien, pas aux sites internet."},
+        {text:"Tête et gorge, fièvre depuis 2 jours.",q:"ok",next:"s2b",r:"Depuis 2 jours ? Si ça ne s'améliore pas consultez un médecin."},
+        {text:"Pardon, j'ai mal à la tête et de la fièvre.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+      ]},
+    s2d:{other:"Depuis combien de temps ?",
+      choices:[
+        {text:"Depuis hier soir, j'ai aussi 38.5.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+        {text:"Longtemps.",q:"warn",next:"s2d2",r:"Des heures ? Des jours ?",tip:"Donne une durée précise."},
+        {text:"Je sais pas exactement.",q:"warn",next:"s2b",r:"D'accord. Autres médicaments en cours ?",tip:"Essaie de te souvenir depuis quand tu as mal."},
+        {text:"Depuis hier matin.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+      ]},
+    s2d2:{other:"Des heures ou des jours ?",
+      choices:[
+        {text:"Depuis hier, donc environ 24h.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+        {text:"Je sais vraiment pas.",q:"bad",next:"s2b",r:"D'accord, je vous donne du paracétamol.",tip:"Essaie de savoir depuis quand tu te sens mal, c'est important."},
+        {text:"Depuis hier soir.",q:"ok",next:"s2b",r:"Bien. Autres médicaments ?"},
+        {text:"Quelques heures.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+      ]},
+    s2e:{other:"Revenez avec votre ordonnance.",
+      choices:[
+        {text:"D'accord, je reviendrai. Merci quand même.",q:"ok",next:null,r:"",tip:""},
+        {text:"Mais j'en ai besoin maintenant !",q:"bad",next:"s2e2",r:"Je comprends mais sans ordonnance c'est impossible pour ces médicaments.",tip:"Sans ordonnance, impossible d'avoir certains médicaments. Il faut l'apporter."},
+        {text:"Ok merci.",q:"warn",next:null,r:"",tip:"Un simple 'ok' c'est sec. 'Merci quand même' c'est plus poli."},
+        {text:"Je comprends, je reviens demain avec l'ordonnance.",q:"ok",next:null,r:""},
+      ]},
+    s2e2:{other:"Sans ordonnance c'est impossible.",
+      choices:[
+        {text:"D'accord, je comprends. Merci.",q:"ok",next:null,r:""},
+        {text:"C'est nul.",q:"bad",next:null,r:"",tip:"Le pharmacien respecte la loi. Ne t'énerve pas contre lui."},
+        {text:"Je peux appeler mon médecin pour qu'il vous envoie l'ordonnance ?",q:"ok",next:null,r:"Oui bonne idée, certains médecins peuvent envoyer une ordonnance électronique."},
+        {text:"Vous pouvez pas faire une exception ?",q:"warn",next:null,r:"Non, désolé, c'est la réglementation.",tip:"Le pharmacien ne peut pas faire d'exception pour une ordonnance."},
+      ]},
+    s2f:{other:"Prenez votre temps.",
+      choices:[
+        {text:"La voilà, pardon pour le délai.",q:"ok",next:"s3",r:"Pas de souci ! Vous avez des allergies ?"},
+        {text:"Je l'ai pas avec moi…",q:"bad",next:"s2e",r:"Sans ordonnance je ne peux pas vous délivrer ces médicaments.",tip:"Toujours vérifier qu'on a son ordonnance avant de venir."},
+        {text:"La voilà.",q:"ok",next:"s3",r:"Merci. Des allergies ?"},
+        {text:"Euh attendez… voilà.",q:"warn",next:"s3",r:"Merci. Des allergies ?",tip:""},
+      ]},
+    s2g:{other:"Vérifiez dans votre sac.",
+      choices:[
+        {text:"J'ai du Bisoprolol pour le cœur.",q:"ok",next:"s3c",r:"Merci, c'est important. Le paracétamol est compatible."},
+        {text:"Je sais toujours pas.",q:"bad",next:"s3b",r:"D'accord, prenez le paracétamol avec prudence.",tip:"Il est très important de connaître les médicaments qu'on prend."},
+        {text:"Non je prends rien d'autre.",q:"ok",next:"s3b",r:"Parfait. Paracétamol 1g toutes les 6h."},
+        {text:"J'ai des médicaments dans mon sac mais je sais pas les noms.",q:"warn",next:"s3b",r:"Montrez-les moi si vous voulez. Paracétamol pour l'instant.",tip:"Note le nom de tes médicaments ou garde les boîtes."},
+      ]},
+    s3:{other:"Vous avez des allergies connues ?",
+      choices:[
+        {text:"Oui je suis allergique aux pénicillines.",q:"ok",next:"s3d",r:"Merci de me le dire ! Je vérifie que l'ordonnance ne contient pas de pénicilline."},
+        {text:"Non aucune à ma connaissance.",q:"ok",next:"s4",r:"Parfait. Je prépare vos médicaments et je vous explique comment les prendre."},
+        {text:"Je sais pas.",q:"warn",next:"s3e",r:"Demandez à votre famille ou à votre médecin. Pour l'instant il n'y a pas de risque.",tip:"Il est important de connaître ses allergies."},
+        {text:"Des allergies à quoi ?",q:"warn",next:"s3e2",r:"Aux médicaments, au latex, à certains aliments ?",tip:"Il faut connaître ses allergies, c'est très important pour la santé."},
+      ]},
+    s3b:{other:"Paracétamol 1g toutes les 6h, max 4 par jour.",
+      choices:[
+        {text:"D'accord. Et si j'ai pas de fièvre après 2 jours ?",q:"ok",next:"s4b",r:"Consultez votre médecin si pas d'amélioration en 48h."},
+        {text:"Je peux en prendre plus si c'est urgent ?",q:"bad",next:"s3f",r:"Non ! Ne dépassez jamais la dose. C'est dangereux.",tip:"Ne jamais dépasser la dose prescrite, c'est très dangereux."},
+        {text:"Compris. Je peux l'avoir sans ordonnance ?",q:"ok",next:"s4c",r:"Le paracétamol ne nécessite pas d'ordonnance, vous pouvez l'acheter directement."},
+        {text:"Ok.",q:"warn",next:"s4",r:"N'hésitez pas à revenir si ça ne va pas mieux.",tip:"Écoute bien les instructions et pose des questions si tu n'as pas compris."},
+      ]},
+    s3c:{other:"Le paracétamol est compatible avec votre traitement.",
+      choices:[
+        {text:"Merci de vérifier, c'est rassurant.",q:"ok",next:"s4",r:"C'est mon rôle ! Je vous explique la posologie."},
+        {text:"C'est quoi compatible ?",q:"ok",next:"s3c2",r:"Ça veut dire que les deux médicaments peuvent se prendre ensemble sans danger."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Je vous explique comment le prendre.",tip:""},
+        {text:"Je fais confiance.",q:"ok",next:"s4",r:"Parfait. Voici comment prendre le paracétamol."},
+      ]},
+    s3c2:{other:"Compatible = les deux médicaments peuvent se prendre ensemble.",
+      choices:[
+        {text:"Ah d'accord, merci pour l'explication !",q:"ok",next:"s4",r:"De rien. Voici la posologie."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici comment le prendre.",tip:""},
+        {text:"Super, merci.",q:"ok",next:"s4",r:"Je vous explique la posologie."},
+        {text:"C'est bon à savoir merci.",q:"ok",next:"s4",r:"Voici les instructions."},
+      ]},
+    s3d:{other:"Je vérifie — pas de pénicilline, vous pouvez prendre ce traitement.",
+      choices:[
+        {text:"Merci beaucoup, c'est important pour moi.",q:"ok",next:"s4",r:"Bien sûr ! Je vous explique comment prendre les médicaments."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici les instructions.",tip:""},
+        {text:"Super.",q:"warn",next:"s4",r:"Voici comment les prendre.",tip:""},
+        {text:"Merci de vérifier.",q:"ok",next:"s4",r:"C'est mon rôle. Voici les instructions."},
+      ]},
+    s3e:{other:"Demandez à votre famille ou médecin.",
+      choices:[
+        {text:"D'accord, je vais demander. Merci.",q:"ok",next:"s4",r:"Bien. Voici vos médicaments."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici les médicaments.",tip:""},
+        {text:"Bah je sais pas.",q:"bad",next:"s4",r:"Essayez de vous renseigner, c'est important.",tip:"Connais tes allergies, note-les quelque part."},
+        {text:"Je vais essayer de me souvenir.",q:"ok",next:"s4",r:"D'accord. Voici vos médicaments."},
+      ]},
+    s3e2:{other:"Allergies aux médicaments, latex ou aliments ?",
+      choices:[
+        {text:"Aux pénicillines.",q:"ok",next:"s3d",r:"Merci. Je vérifie l'ordonnance."},
+        {text:"Je sais pas vraiment.",q:"warn",next:"s4",r:"D'accord, pas de risque avec ce traitement.",tip:"Essaie de te souvenir de tes allergies."},
+        {text:"Aux poils de chat !",q:"warn",next:"s4",r:"Je pensais aux médicaments, mais merci. Pas de risque ici.",tip:"Les allergies médicamenteuses sont les plus importantes à mentionner à la pharmacie."},
+        {text:"Aucune que je sache.",q:"ok",next:"s4",r:"Parfait. Voici vos médicaments."},
+      ]},
+    s3f:{other:"Ne dépassez JAMAIS la dose, c'est dangereux.",
+      choices:[
+        {text:"D'accord, je comprends, je respecterai la dose.",q:"ok",next:"s4",r:"Très bien. Voici vos médicaments."},
+        {text:"Ok mais si j'ai très mal ?",q:"warn",next:"s3f2",r:"Même en cas de forte douleur. Sinon consultez un médecin.",tip:"Jamais dépasser la dose, quelle que soit la douleur."},
+        {text:"Compris.",q:"ok",next:"s4",r:"Bien. Voici les médicaments."},
+        {text:"Oui pardon.",q:"ok",next:"s4",r:"Voici les médicaments."},
+      ]},
+    s3f2:{other:"Même si très mal — consultez un médecin si besoin.",
+      choices:[
+        {text:"D'accord, compris. Merci.",q:"ok",next:"s4",r:"Voici vos médicaments."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici les médicaments.",tip:""},
+        {text:"Je comprends.",q:"ok",next:"s4",r:"Voici les médicaments."},
+        {text:"Bon d'accord.",q:"warn",next:"s4",r:"Voici.",tip:""},
+      ]},
+    s4:{other:"Prenez 1 comprimé matin, midi et soir avec de l'eau. 7 jours.",
+      choices:[
+        {text:"D'accord. Est-ce que je peux les prendre à l'estomac vide ?",q:"ok",next:"s4d",r:"Oui sans problème, mais de préférence après le repas si vous avez l'estomac fragile."},
+        {text:"Compris, merci beaucoup !",q:"ok",next:"end",r:"Bonne guérison ! Revenez si ça ne va pas mieux."},
+        {text:"Je peux en noter les instructions ?",q:"ok",next:"s4e",r:"Bien sûr ! Je peux aussi imprimer une notice."},
+        {text:"C'est bon j'ai compris.",q:"warn",next:"end",r:"Bonne guérison !",tip:"N'hésite pas à demander si tu n'es pas sûr d'avoir tout compris."},
+      ]},
+    s4b:{other:"Si pas d'amélioration en 48h, consultez votre médecin.",
+      choices:[
+        {text:"D'accord, je note. Merci beaucoup.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"Et le soir si j'ai mal ?",q:"ok",next:"s4f",r:"Vous pouvez prendre une dose le soir aussi, dans la limite de 4 par jour."},
+        {text:"Ok.",q:"warn",next:"end",r:"Bonne guérison !",tip:""},
+        {text:"Merci pour le conseil.",q:"ok",next:"end",r:"Bonne guérison !"},
+      ]},
+    s4c:{other:"Oui, le paracétamol est en vente libre.",
+      choices:[
+        {text:"Merci, je le savais pas.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"Super, merci pour tout.",q:"ok",next:"end",r:"Avec plaisir, bonne guérison !"},
+        {text:"Alors pourquoi vous me l'avez pas dit avant ?",q:"bad",next:"end",r:"Parce que vous me parliez d'ordonnance.",tip:"Ne sois pas agressif envers le pharmacien."},
+        {text:"Ok merci.",q:"ok",next:"end",r:"Bonne guérison !"},
+      ]},
+    s4d:{other:"Après repas si estomac fragile, sinon c'est libre.",
+      choices:[
+        {text:"Merci pour le conseil.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"D'accord, merci beaucoup.",q:"ok",next:"end",r:"Avec plaisir !"},
+        {text:"Super.",q:"warn",next:"end",r:"Bonne guérison !",tip:""},
+        {text:"Parfait, merci.",q:"ok",next:"end",r:"Bonne guérison !"},
+      ]},
+    s4e:{other:"Voilà la notice. N'hésitez pas à revenir.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Super merci.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci, bonne journée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"bad",next:null,r:"",tip:"Un simple 'ok' est très sec pour conclure une conversation."},
+      ]},
+    s4f:{other:"Oui, max 4 comprimés par jour en tout.",
+      choices:[
+        {text:"Compris, merci pour tout.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"Bonne guérison !",tip:""},
+        {text:"Merci.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"Et si j'en prends 5 ?",q:"bad",next:"s3f",r:"Non ! 4 maximum, c'est dangereux au-delà.",tip:"Ne jamais dépasser la dose recommandée."},
+      ]},
+    end:{other:"Bonne guérison ! N'hésitez pas à revenir.",
+      choices:[
+        {text:"Merci, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci beaucoup.",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"bad",next:null,r:"",tip:"'Ok' tout seul c'est très sec. Un 'merci' minimum."},
+        {text:"Merci, à bientôt.",q:"ok",next:null,r:""},
+      ]},
+  }
+},
+{
+  id:"transport",icon:"🚌",name:"Perdu dans les transports",who:"Agent / Passager",ctx:"Tu es perdu, tu demandes de l'aide",
+  start:"s1",
+  steps:{
+    s1:{other:"(Un agent passe devant toi)",
+      choices:[
+        {text:"(Tu restes sans rien dire en espérant qu'il t'aide)",q:"bad",next:"s1b",r:"(L'agent ne te remarque pas et continue)",tip:"Si tu as besoin d'aide, il faut oser demander. Personne ne peut deviner que tu es perdu."},
+        {text:"Hé ! Attendez !",q:"warn",next:"s1c",r:"Oui ? Je peux vous aider ?",tip:"'Hé' c'est un peu brusque. 'Excusez-moi' est plus poli et plus efficace."},
+        {text:"Excusez-moi, vous pouvez m'aider s'il vous plaît ?",q:"ok",next:"s2",r:"Bien sûr ! Qu'est-ce qui se passe ?"},
+        {text:"Excusez-moi monsieur/madame, je suis perdu(e), vous pouvez m'aider ?",q:"ok",next:"s2",r:"Pas de panique ! Je suis là. Vous allez où ?"},
+      ]},
+    s1b:{other:"(L'agent est passé, tu es toujours seul)",
+      choices:[
+        {text:"(Tu attends qu'un autre agent passe)",q:"warn",next:"s1b2",r:"(Un autre agent passe) Vous avez besoin d'aide ?",tip:"Attendre passivement n'est pas la meilleure solution. Il faut interpeller quelqu'un."},
+        {text:"Tu t'approches du guichet d'information.",q:"ok",next:"s1d",r:"Bonjour ! Je peux vous aider ?"},
+        {text:"Tu interpelles un passager.",q:"ok",next:"s1e",r:"Oui ? Qu'est-ce qui se passe ?"},
+        {text:"(Tu restes sans bouger, de plus en plus anxieux)",q:"bad",next:"s1b2",r:"(Une heure plus tard, un agent te remarque) Ça va ?",tip:"Ne reste pas bloqué. Il y a toujours quelqu'un pour aider."},
+      ]},
+    s1b2:{other:"Vous avez besoin d'aide ?",
+      choices:[
+        {text:"Oui merci ! Je suis perdu, je cherche la gare de Lyon.",q:"ok",next:"s3",r:"Pas de souci ! Vous êtes à Nation. Il faut prendre la ligne 1."},
+        {text:"Oui, je sais plus où aller.",q:"warn",next:"s2",r:"Où est-ce que vous voulez aller ?",tip:"Dis directement ta destination."},
+        {text:"Non ça va.",q:"bad",next:null,r:"",tip:"Si tu es perdu, accepte l'aide qu'on te propose !"},
+        {text:"Oui s'il vous plaît.",q:"ok",next:"s2",r:"Où allez-vous ?"},
+      ]},
+    s1c:{other:"Oui, je peux vous aider ?",
+      choices:[
+        {text:"Je suis perdu, je cherche la gare de Lyon.",q:"ok",next:"s3",r:"D'accord ! Vous êtes à Nation. Ligne 1 direction La Défense."},
+        {text:"Vous pouvez m'aider ? Je suis perdu(e).",q:"ok",next:"s2",r:"Bien sûr ! Vous allez où ?"},
+        {text:"Ouais j'suis perdu.",q:"warn",next:"s2",r:"Où est-ce que vous voulez aller ?",tip:"Sois un peu plus poli, même quand tu es stressé."},
+        {text:"Je comprends pas les panneaux.",q:"warn",next:"s2",r:"Pas de problème. Où voulez-vous aller ?",tip:"Explique d'abord ta destination."},
+      ]},
+    s1d:{other:"Bonjour ! Je peux vous aider ?",
+      choices:[
+        {text:"Bonjour ! Oui, je suis perdu(e). Je cherche la gare de Lyon.",q:"ok",next:"s3",r:"Pas de souci ! Vous êtes à Nation. Prenez la ligne 1."},
+        {text:"Bonjour, je comprends pas le plan.",q:"warn",next:"s2",r:"Où voulez-vous aller ?",tip:"Dis d'abord ta destination."},
+        {text:"Bonjour, j'ai pris le mauvais métro je crois.",q:"ok",next:"s2",r:"Où voulez-vous aller ?"},
+        {text:"Je suis perdu.",q:"warn",next:"s2",r:"Pas de panique ! Où allez-vous ?",tip:"Dis bonjour avant tout."},
+      ]},
+    s1e:{other:"(Le passager) Oui ? Qu'est-ce qui se passe ?",
+      choices:[
+        {text:"Excusez-moi, je cherche la gare de Lyon. Vous savez comment y aller ?",q:"ok",next:"s3",r:"Oui ! Prenez la ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Je suis perdu.",q:"warn",next:"s2",r:"Où voulez-vous aller ?",tip:"Dis directement ta destination."},
+        {text:"Vous connaissez la gare de Lyon ?",q:"ok",next:"s3",r:"Oui ! Ligne 1, 3 arrêts."},
+        {text:"C'est où ici ?",q:"warn",next:"s2b",r:"On est à Nation. Vous allez où ?",tip:"Dis d'abord où tu veux aller."},
+      ]},
+    s2:{other:"Où voulez-vous aller ?",
+      choices:[
+        {text:"Je cherche la gare de Lyon.",q:"ok",next:"s3",r:"Vous êtes à Nation. Prenez la ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Je sais pas trop.",q:"bad",next:"s2c",r:"Vous avez un billet ? Une réservation ?",tip:"Il faut savoir où on veut aller avant de prendre les transports."},
+        {text:"À la gare de Lyon, j'ai un train.",q:"ok",next:"s3",r:"D'accord. Vous êtes à Nation, ligne 1, 3 arrêts."},
+        {text:"Je voulais aller à la gare mais je suis perdu.",q:"ok",next:"s2d",r:"Quelle gare ?"},
+      ]},
+    s2b:{other:"On est à Nation. Vous allez où ?",
+      choices:[
+        {text:"À la gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Je sais pas.",q:"bad",next:"s2c",r:"Vous avez un billet ou une réservation ?",tip:"Savoir où on va, c'est la base !"},
+        {text:"Chez moi.",q:"warn",next:"s2c",r:"Et votre adresse ?",tip:"Donne une destination précise dans les transports en commun."},
+        {text:"Gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1, La Défense, 3 arrêts."},
+      ]},
+    s2c:{other:"Vous avez un billet ou une réservation ?",
+      choices:[
+        {text:"Oui, j'ai ce billet.",q:"ok",next:"s3b",r:"Je vois, vous allez à la gare de Lyon. Vous êtes dans le mauvais sens !"},
+        {text:"Non, je voulais juste rentrer chez moi.",q:"warn",next:"s2e",r:"Votre adresse ?",tip:"Dans les transports, il faut avoir un titre de transport."},
+        {text:"Je sais pas si j'en ai un.",q:"bad",next:"s2f",r:"Regardez dans votre poche ou votre sac.",tip:"Il faut toujours avoir son titre de transport sur soi."},
+        {text:"Oui voilà.",q:"ok",next:"s3b",r:"Je vois, vous allez gare de Lyon. Vous êtes dans le mauvais sens !"},
+      ]},
+    s2d:{other:"Quelle gare ?",
+      choices:[
+        {text:"La gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Celle où partent les TGV.",q:"warn",next:"s3",r:"Gare de Lyon alors. Ligne 1, 3 arrêts.",tip:"Donne le nom exact de la gare."},
+        {text:"Je sais pas le nom.",q:"bad",next:"s2c",r:"Vous avez un billet ?",tip:"Connais toujours ta destination avant de prendre les transports."},
+        {text:"Gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1, La Défense, 3 arrêts."},
+      ]},
+    s2e:{other:"Votre adresse ?",
+      choices:[
+        {text:"12 rue des Fleurs à Paris.",q:"ok",next:"s3c",r:"D'accord. Vous devez prendre le bus 91."},
+        {text:"Je sais plus.",q:"bad",next:"s3d",r:"Vous avez votre adresse sur un papier ou votre téléphone ?",tip:"Il faut toujours avoir son adresse notée quelque part."},
+        {text:"Près du parc.",q:"bad",next:"s2e2",r:"Je n'ai pas compris, il me faut l'adresse exacte.",tip:"Donne une adresse précise : numéro, rue, ville."},
+        {text:"14 avenue de la Paix.",q:"ok",next:"s3c",r:"D'accord, prenez le bus 73."},
+      ]},
+    s2e2:{other:"L'adresse exacte s'il vous plaît.",
+      choices:[
+        {text:"12 rue des Fleurs à Paris.",q:"ok",next:"s3c",r:"Prenez le bus 91."},
+        {text:"Je me souviens plus exactement.",q:"bad",next:"s3d",r:"Regardez dans votre téléphone.",tip:"Avoir son adresse dans son téléphone est très utile."},
+        {text:"C'est dans le 15ème.",q:"warn",next:"s2e3",r:"Quelle rue ?",tip:"Donne le numéro et le nom de la rue."},
+        {text:"14 avenue de la Paix, 15ème.",q:"ok",next:"s3c",r:"Prenez le bus 73."},
+      ]},
+    s2e3:{other:"Quelle rue ?",
+      choices:[
+        {text:"Rue des Fleurs, numéro 12.",q:"ok",next:"s3c",r:"Bus 91."},
+        {text:"Je me souviens pas.",q:"bad",next:"s3d",r:"Regardez dans votre téléphone.",tip:"Note toujours ton adresse quelque part."},
+        {text:"Je crois que c'est rue de la Paix.",q:"warn",next:"s3c",r:"D'accord, bus 73 ou 92.",tip:"Connais ta propre adresse."},
+        {text:"Rue de la Liberté numéro 5.",q:"ok",next:"s3c",r:"D'accord, bus 72."},
+      ]},
+    s2f:{other:"Regardez dans votre sac ou vos poches.",
+      choices:[
+        {text:"Voilà, j'ai ce ticket.",q:"ok",next:"s3b",r:"Vous allez gare de Lyon. Vous êtes dans le mauvais sens !"},
+        {text:"J'ai rien.",q:"bad",next:"s3e",r:"Sans titre de transport vous êtes en infraction. Il faut en acheter un.",tip:"Toujours avoir son titre de transport."},
+        {text:"J'ai une carte Navigo.",q:"ok",next:"s3",r:"Parfait. Vous êtes à Nation, ligne 1, 3 arrêts."},
+        {text:"J'ai pas de ticket.",q:"warn",next:"s3e",r:"Il faut acheter un ticket. Le guichet est là-bas.",tip:"On ne prend pas les transports sans payer."},
+      ]},
+    s3:{other:"Ligne 1 direction La Défense, 3 arrêts — descendez à Gare de Lyon.",
+      choices:[
+        {text:"Merci ! Et c'est quel quai ?",q:"ok",next:"s4",r:"Quai B, là à gauche. Vous voyez le panneau bleu ?"},
+        {text:"Vous pouvez répéter s'il vous plaît ?",q:"ok",next:"s3r",r:"Ligne 1, direction La Défense. Descendez dans 3 arrêts à Gare de Lyon."},
+        {text:"D'accord, merci.",q:"warn",next:"s4",r:"Le quai B est là à gauche, panneau bleu.",tip:"N'hésite pas à demander où est le quai."},
+        {text:"Ligne 1 La Défense 3 arrêts, j'ai compris. Merci !",q:"ok",next:"s4b",r:"Parfait ! Bon voyage !"},
+      ]},
+    s3b:{other:"Vous êtes dans le mauvais sens ! Descendez au prochain arrêt.",
+      choices:[
+        {text:"Ah ! Merci beaucoup. Et ensuite je fais quoi ?",q:"ok",next:"s3b2",r:"Descendez, traversez, reprenez la ligne 1 dans l'autre sens jusqu'à Gare de Lyon."},
+        {text:"Quoi ?! C'est grave ?",q:"warn",next:"s3b2",r:"Non, pas de panique ! Descendez juste au prochain arrêt et revenez en arrière.",tip:"Pas de panique quand on se trompe, ça arrive."},
+        {text:"Oh non…",q:"warn",next:"s3b2",r:"Pas de souci ! Descendez au prochain arrêt.",tip:"Reste calme, il existe toujours une solution."},
+        {text:"D'accord ! Je descends et je prends l'autre sens.",q:"ok",next:"end",r:"Exactement ! Bon voyage !"},
+      ]},
+    s3b2:{other:"Descendez, traversez, reprenez ligne 1 vers Gare de Lyon.",
+      choices:[
+        {text:"Compris, merci beaucoup !",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Vous pouvez répéter ?",q:"ok",next:"s3b3",r:"Descendez au prochain arrêt. Traversez le quai. Reprenez ligne 1 dans l'autre sens."},
+        {text:"D'accord.",q:"warn",next:"end",r:"Bon voyage !",tip:""},
+        {text:"Merci pour votre aide !",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+      ]},
+    s3b3:{other:"Descendez, traversez, ligne 1 autre sens.",
+      choices:[
+        {text:"Merci, j'ai compris.",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Vous pouvez venir avec moi ?",q:"warn",next:"s3b4",r:"Je ne peux pas vous accompagner, mais vous allez y arriver !",tip:"L'agent a d'autres personnes à aider. Essaie de mémoriser les instructions."},
+        {text:"Ok merci.",q:"ok",next:"end",r:"De rien !"},
+        {text:"D'accord, je note.",q:"ok",next:"end",r:"Bonne idée ! Bon voyage !"},
+      ]},
+    s3b4:{other:"Vous allez y arriver ! Descendez, traversez, autre sens.",
+      choices:[
+        {text:"D'accord, merci pour votre patience.",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+        {text:"Ok.",q:"warn",next:"end",r:"Bon voyage !",tip:""},
+        {text:"Merci, j'essaie.",q:"ok",next:"end",r:"Vous allez y arriver !"},
+        {text:"Merci beaucoup.",q:"ok",next:"end",r:"Bonne continuation !"},
+      ]},
+    s3c:{other:"Prenez le bus indiqué, direction centre.",
+      choices:[
+        {text:"Merci ! Le bus s'arrête où exactement ?",q:"ok",next:"s4c",r:"L'arrêt est à 50 mètres, sortez par là-bas."},
+        {text:"Merci.",q:"warn",next:"end",r:"Bonne continuation !",tip:""},
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"Bon courage !",tip:""},
+      ]},
+    s3d:{other:"Regardez dans votre téléphone votre adresse.",
+      choices:[
+        {text:"Ah oui, c'est le 12 rue des Fleurs.",q:"ok",next:"s3c",r:"Bus 91 ou 92."},
+        {text:"Mon téléphone est mort.",q:"warn",next:"s3d2",r:"Vous avez quelqu'un à appeler qui peut vous aider ?",tip:"Penser à charger son téléphone avant de sortir."},
+        {text:"J'ai pas de téléphone.",q:"warn",next:"s3d2",r:"Vous avez un papier avec votre adresse ?",tip:"Toujours avoir son adresse notée quelque part."},
+        {text:"Voilà, 14 avenue de la Paix.",q:"ok",next:"s3c",r:"Bus 73."},
+      ]},
+    s3d2:{other:"Quelqu'un peut vous aider par téléphone ou un papier ?",
+      choices:[
+        {text:"J'ai un papier dans mon sac avec mon adresse.",q:"ok",next:"s3c",r:"Parfait ! Bus 91."},
+        {text:"Je peux appeler mon éducateur.",q:"ok",next:"s4d",r:"Bonne idée ! Appelez-le, il pourra vous guider."},
+        {text:"J'ai personne.",q:"bad",next:"s3d3",r:"D'accord, je vais vous accompagner au guichet.",tip:"Il est important d'avoir au moins un numéro d'urgence."},
+        {text:"Ma famille peut me guider.",q:"ok",next:"s4d",r:"Appelez-les, c'est la meilleure solution."},
+      ]},
+    s3d3:{other:"Je vous accompagne au guichet pour vous aider.",
+      choices:[
+        {text:"Merci beaucoup, c'est très gentil !",q:"ok",next:"end",r:"De rien, c'est normal d'aider !"},
+        {text:"Merci.",q:"ok",next:"end",r:"Bonne continuation !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"Allez, on y va !",tip:""},
+        {text:"Ok merci.",q:"ok",next:"end",r:"Pas de souci !"},
+      ]},
+    s3e:{other:"Il faut acheter un ticket. Le guichet est là-bas.",
+      choices:[
+        {text:"D'accord, merci, je vais en acheter un.",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Ça coûte combien ?",q:"ok",next:"s3e2",r:"2,15€ le ticket unitaire ou vous pouvez prendre un carnet."},
+        {text:"Je peux pas payer.",q:"bad",next:"end",r:"Il faudra trouver une solution. Bon courage.",tip:"Il faut toujours prévoir l'argent du transport."},
+        {text:"J'avais pas de ticket, j'allais en acheter un.",q:"warn",next:"end",r:"D'accord, le guichet est là.",tip:"Il faut acheter le ticket avant de monter dans les transports."},
+      ]},
+    s3e2:{other:"2,15€ le ticket ou 16,90€ le carnet de 10.",
+      choices:[
+        {text:"Je prends un ticket unitaire s'il vous plaît.",q:"ok",next:"end",r:"Le guichet est là. Bonne journée !"},
+        {text:"Un carnet, c'est plus économique.",q:"ok",next:"end",r:"Très bien ! Le guichet est là."},
+        {text:"Je peux pas payer.",q:"bad",next:"end",r:"Il faudra trouver une solution, désolé.",tip:"Il faut toujours avoir de l'argent pour les transports."},
+        {text:"Merci pour l'info.",q:"ok",next:"end",r:"Le guichet est là-bas."},
+      ]},
+    s3r:{other:"Ligne 1, direction La Défense, descendez dans 3 arrêts.",
+      choices:[
+        {text:"Compris ! Et c'est quel quai ?",q:"ok",next:"s4",r:"Quai B, là à gauche."},
+        {text:"Merci, j'ai noté.",q:"ok",next:"s4b",r:"Bon voyage !"},
+        {text:"Vous pouvez encore répéter ?",q:"warn",next:"s3r2",r:"Ligne 1, 3 arrêts, Gare de Lyon.",tip:"N'hésite pas à répéter pour mémoriser."},
+        {text:"Ok merci.",q:"warn",next:"s4",r:"Quai B à gauche.",tip:""},
+      ]},
+    s3r2:{other:"Ligne 1, 3 arrêts, Gare de Lyon.",
+      choices:[
+        {text:"Merci ! Quai B à gauche alors ?",q:"ok",next:"end",r:"Exactement ! Bon voyage !"},
+        {text:"Je note : ligne 1, 3 arrêts.",q:"ok",next:"end",r:"Parfait ! Bon voyage !"},
+        {text:"D'accord merci.",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Encore une fois ?",q:"bad",next:"end",r:"Ligne 1, 3 arrêts, Gare de Lyon. Bon voyage !",tip:"Essaie de mémoriser ou note les informations."},
+      ]},
+    s4:{other:"Quai B, là à gauche. Vous voyez le panneau bleu ?",
+      choices:[
+        {text:"Oui je le vois, merci beaucoup !",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Non, je vois pas.",q:"warn",next:"s4e",r:"Suivez-moi, je vous montre."},
+        {text:"Merci infiniment pour votre aide !",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+        {text:"Panneau bleu… ok je cherche.",q:"warn",next:"s4e",r:"Là-bas, c'est le grand panneau bleu avec un 1 dessus.",tip:""},
+      ]},
+    s4b:{other:"Bon voyage ! N'hésitez pas à demander si besoin.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un merci et bonne journée c'est plus chaleureux."},
+        {text:"Merci beaucoup pour votre aide.",q:"ok",next:null,r:""},
+      ]},
+    s4c:{other:"L'arrêt de bus est à 50m, sortez par là-bas.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Super merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci pour votre aide.",q:"ok",next:null,r:""},
+      ]},
+    s4d:{other:"Appelez votre contact, c'est la meilleure solution.",
+      choices:[
+        {text:"Merci beaucoup pour votre aide !",q:"ok",next:null,r:""},
+        {text:"Je vais appeler, merci.",q:"ok",next:null,r:""},
+        {text:"Ok merci.",q:"warn",next:null,r:"",tip:""},
+        {text:"Bonne idée, merci.",q:"ok",next:null,r:""},
+      ]},
+    s4e:{other:"Suivez-moi, je vous montre le quai B.",
+      choices:[
+        {text:"Merci beaucoup, vous êtes très gentil(le) !",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+        {text:"Merci.",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Super.",q:"warn",next:"end",r:"Bon voyage !",tip:""},
+        {text:"C'est très gentil, merci infiniment.",q:"ok",next:"end",r:"Bonne continuation !"},
+      ]},
+    end:{other:"Bon voyage !",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours remercier les personnes qui t'ont aidé."},
+        {text:"Merci, bonne journée à vous !",q:"ok",next:null,r:""},
+      ]},
+  }
+},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let S={screen:"menu",scIdx:0,stepId:"",msgs:[],log:[],chosen:null,feedback:null,done:{}};
+const letters=["A","B","C","D"];
+
+function sc(){return SCENARIOS[S.scIdx];}
+function step(){return S.stepId?sc().steps[S.stepId]:null;}
+
+// ─── SYNTHÈSE VOCALE ──────────────────────────────────────────────────────────
+const synth=window.speechSynthesis;
+function speak(text){
+  if(!synth) return;
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="fr-FR";u.rate=0.9;u.pitch=1.05;
+  synth.speak(u);
+}
+
+// ─── RECONNAISSANCE VOCALE ────────────────────────────────────────────────────
+let recognition=null;
+if(window.SpeechRecognition||window.webkitSpeechRecognition){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.lang="fr-FR";recognition.continuous=false;recognition.interimResults=false;
+}
+
+function startListen(cb){
+  if(!recognition){cb(null);return;}
+  recognition.start();
+  recognition.onresult=e=>cb(e.results[0][0].transcript);
+  recognition.onerror=()=>cb(null);
+  recognition.onend=()=>{};
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  const g=document.getElementById("app");
+  ({menu:renderMenu,chat:renderChat,end:renderEnd}[S.screen]||renderMenu)(g);
+}
+
+function renderMenu(g){
+  const cards=SCENARIOS.map((s,i)=>`
+    <div class="sc-card${S.done[s.id]?" done":""}" onclick="startSc(${i})">
+      <div class="sc-icon">${s.icon}</div>
+      <div class="sc-name">${s.name}</div>
+      ${S.done[s.id]?'<div class="sc-done">✅ Terminé</div>':''}
+    </div>`).join("");
+  g.innerHTML=`<h1>💬 Simulateur de dialogue</h1>
+    <p class="subtitle">Entraîne-toi à communiquer dans la vie de tous les jours. Choisis une situation.</p>
+    <div class="grid">${cards}</div>
+    <div class="tip">💡 <b>Comment jouer :</b> Lis la réplique, puis choisis parmi 4 réponses. La bonne n'est pas toujours la première ! Le scénario change selon ce que tu dis. 🔊 Appuie sur Réécouter pour entendre la réplique.</div>`;
+}
+
+function startSc(i){
+  S.scIdx=i;S.stepId=sc().start;S.msgs=[];S.log=[];S.chosen=null;S.feedback=null;S.screen="chat";
+  const intro=step().other;
+  S.msgs.push({who:"other",text:intro});
+  render();
+  setTimeout(()=>speak(intro),400);
+}
+
+function renderChat(g){
+  const s=sc();
+  const st=step();
+  // Dots de progression
+  let dots='<div class="prog">';
+  S.log.forEach(l=>dots+=`<div class="prog-dot pd-${l.q}"></div>`);
+  if(st) dots+='<div class="prog-dot pd-active"></div>';
+  dots+='</div>';
+
+  // Messages
+  const msgs=S.msgs.map(m=>`
+    <div class="bubble-wrap${m.who==="me"?" me":""}">
+      <div class="bubble-lbl">${m.who==="other"?s.who:"Moi"}</div>
+      <div class="bubble ${m.cls||m.who}">${m.text}</div>
+    </div>`).join("");
+
+  // Feedback
+  let fb="";
+  if(S.feedback){
+    fb=`<div class="reaction r-${S.feedback.type}">${S.feedback.msg}</div>`;
+  }
+
+  // Choix
+  let choicesHtml="";
+  if(st && S.chosen===null){
+    choicesHtml='<div class="choices">'+
+      st.choices.map((c,i)=>`
+        <button class="choice" onclick="choose(${i})">
+          <span class="ltr">${letters[i]}</span>${c.text}
+        </button>`).join("")+
+      '</div>';
+  } else if(st && S.chosen!==null){
+    const ch=st.choices[S.chosen];
+    choicesHtml='<div class="choices">'+
+      st.choices.map((c,i)=>{
+        let ltrCls="ltr";
+        let btnCls="choice dim";
+        if(i===S.chosen){ltrCls="ltr ltr-"+c.q;btnCls="choice";}
+        else if(c.q==="ok" && ch.q!=="ok") ltrCls="ltr ltr-reveal";
+        return`<button class="choice${i===S.chosen?"":" dim"}" disabled>
+          <span class="${ltrCls}">${letters[i]}</span>${c.text}
+        </button>`;
+      }).join("")+
+      '</div>'+
+      `<button class="btn btn-p" onclick="nextStep()">${ch.next?"Continuer →":"Voir mon bilan"}</button>`;
+  }
+
+  // Barre micro/son
+  const voiceBar=`<div class="voice-bar">
+    <button class="mic-btn mic-idle" id="mic" onclick="toggleMic()" title="Répondre à voix haute">🎤</button>
+    <span class="voice-status" id="vstatus">Choisis une réponse ou parle avec le micro.</span>
+    <button class="speak-btn" onclick="speakLast()">🔊 Réécouter</button>
+  </div>`;
+
+  g.innerHTML=`
+    <button class="btn-back" onclick="S.screen='menu';synth&&synth.cancel();render()">← Retour</button>
+    ${dots}
+    <div class="chat-box">
+      <div class="chat-head">
+        <div class="chat-head-icon">${s.icon}</div>
+        <div><div class="chat-head-name">${s.who}</div><div class="chat-head-ctx">${s.ctx}</div></div>
+      </div>
+      <div class="chat-msgs" id="cmsg">${msgs}</div>
+    </div>
+    ${fb}
+    ${voiceBar}
+    ${choicesHtml}`;
+  const cm=document.getElementById("cmsg");
+  if(cm) cm.scrollTop=cm.scrollHeight;
+}
+
+function choose(i){
+  if(S.chosen!==null) return;
+  const st=step();
+  const c=st.choices[i];
+  S.chosen=i;
+  const cls=c.q==="ok"?"me-ok":c.q==="warn"?"me-warn":"me-bad";
+  S.msgs.push({who:"me",text:c.text,cls});
+  S.log.push({q:c.q,said:c.text,tip:c.tip||"",stepOther:st.other,better:st.choices.find(x=>x.q==="ok")?.text||""});
+  if(c.q==="ok") S.feedback={type:"ok",msg:"✅ Parfait !"};
+  else if(c.q==="warn") S.feedback={type:"warn",msg:"😬 Ça peut marcher mais c'est approximatif."+(c.tip?" "+c.tip:"")};
+  else S.feedback={type:"bad",msg:"❌ Cette réponse n'est pas adaptée."+(c.tip?" "+c.tip:"")};
+  render();
+  if(c.r) setTimeout(()=>{S.msgs.push({who:"other",text:c.r});speak(c.r);},700);
+}
+
+function nextStep(){
+  const c=step().choices[S.chosen];
+  S.chosen=null;S.feedback=null;
+  if(!c.next){S.done[sc().id]=true;S.screen="end";render();return;}
+  S.stepId=c.next;
+  render();
+}
+
+function speakLast(){
+  const last=S.msgs.filter(m=>m.who==="other").pop();
+  if(last) speak(last.text);
+}
+
+function toggleMic(){
+  const mic=document.getElementById("mic");
+  const vs=document.getElementById("vstatus");
+  if(!recognition){vs&&(vs.textContent="🎤 Micro non disponible sur ce navigateur (utilise Chrome).");return;}
+  mic&&(mic.className="mic-btn mic-on");
+  vs&&(vs.textContent="🎤 J'écoute…");
+  startListen(txt=>{
+    mic&&(mic.className="mic-btn mic-idle");
+    if(txt){
+      vs&&(vs.textContent='Tu as dit : "'+txt+'"');
+      matchVoice(txt);
+    } else {
+      vs&&(vs.textContent="Je n'ai pas compris. Choisis une réponse.");
+    }
+  });
+}
+
+function matchVoice(txt){
+  const st=step();
+  if(!st||S.chosen!==null) return;
+  const lo=txt.toLowerCase();
+  let best=0,bestScore=0;
+  st.choices.forEach((c,i)=>{
+    const words=c.text.toLowerCase().replace(/[^\w\s]/g,"").split(/\s+/).filter(w=>w.length>3);
+    const score=words.length?words.filter(w=>lo.includes(w)).length/words.length:0;
+    if(score>bestScore){bestScore=score;best=i;}
+  });
+  choose(best);
+}
+
+function renderEnd(g){
+  const ok=S.log.filter(l=>l.q==="ok").length;
+  const warn=S.log.filter(l=>l.q==="warn").length;
+  const bad=S.log.filter(l=>l.q==="bad").length;
+  const total=S.log.length;
+  const pct=total?Math.round(ok/total*100):0;
+
+  let msg="",color="";
+  if(pct>=80){msg="Excellent ! Tu communiques très bien dans cette situation.";color="#27500A";}
+  else if(pct>=55){msg="Bien joué ! Encore un peu d'entraînement et ce sera parfait.";color="#185FA5";}
+  else if(pct>=35){msg="Pas mal, mais il y a des points à améliorer. Lis le bilan ci-dessous.";color="#633806";}
+  else{msg="Il faut s'entraîner davantage. Relis le bilan pour comprendre ce qui n'allait pas.";color="#791F1F";}
+
+  // Erreurs détaillées (warn + bad seulement)
+  const errors=S.log.filter(l=>l.q!=="ok");
+  let errorSection="";
+  if(errors.length>0){
+    const items=errors.map(l=>`
+      <div class="error-item">
+        <div class="error-q">🗣 ${l.stepOther}</div>
+        <div class="error-said">❌ Tu as dit : "${l.said}"</div>
+        ${l.tip?`<div style="font-size:12px;color:#888;margin:2px 0">➜ ${l.tip}</div>`:""}
+        ${l.better?`<div class="error-better">✅ Mieux : "${l.better}"</div>`:""}
+      </div>`).join("");
+    errorSection=`
+      <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:8px">📋 Ce qu'on peut améliorer</div>
+      <div class="error-list">${items}</div>`;
+  } else {
+    errorSection=`<div class="tip">🎉 Aucune erreur ! Tu as parfaitement géré cette situation.</div>`;
+  }
+
+  g.innerHTML=`
+    <h1>${sc().icon} ${sc().name}</h1>
+    <div class="score-big">${ok}/${total}</div>
+    <div class="score-sub" style="color:${color}">${msg}</div>
+    <div class="badges">
+      <span class="badge" style="background:#EAF3DE;color:#27500A">✅ ${ok} parfaites</span>
+      ${warn?`<span class="badge" style="background:#FAEEDA;color:#633806">😬 ${warn} approx.</span>`:""}
+      ${bad?`<span class="badge" style="background:#FCEBEB;color:#791F1F">❌ ${bad} inadaptées</span>`:""}
+    </div>
+    ${errorSection}
+    <button class="btn btn-p" onclick="startSc(S.scIdx)">Recommencer</button>
+    <button class="btn" onclick="S.screen='menu';render()">Autre scénario</button>`;
+}
+
+render();
+</script>
+</body>
+</html>
