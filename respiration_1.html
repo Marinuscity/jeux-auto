@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Respiration</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Nunito',system-ui,sans-serif}
+
+#screen-home,#screen-exercise,#screen-end{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;transition:opacity .5s;
+}
+.hidden{opacity:0;pointer-events:none}
+
+/* ── ACCUEIL ── */
+#screen-home{background:linear-gradient(160deg,#e8f4fd 0%,#d4eaf7 50%,#c8e6f0 100%)}
+.home-title{font-size:clamp(28px,7vw,52px);font-weight:900;color:#2c5282;margin-bottom:8px;text-align:center}
+.home-sub{font-size:clamp(15px,4vw,22px);color:#4a7fa5;margin-bottom:40px;text-align:center}
+.ex-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;padding:0 16px}
+.ex-card{
+  background:white;border-radius:28px;padding:28px 24px;
+  box-shadow:0 8px 32px rgba(0,0,0,.1);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  width:clamp(130px,28vw,180px);border:3px solid transparent;
+  transition:transform .2s,box-shadow .2s;
+}
+.ex-card:hover,.ex-card:active{transform:scale(1.06);box-shadow:0 12px 40px rgba(0,0,0,.15)}
+.ex-card.balloon{border-color:#f9a8d4}
+.ex-card.bubbles{border-color:#93c5fd}
+.ex-card.cloud  {border-color:#c4b5fd}
+.ex-card-icon{font-size:52px;line-height:1}
+.ex-card-name{font-size:17px;font-weight:800;color:#374151;text-align:center}
+
+/* ── EXERCICE ── */
+#screen-exercise{background:#e8f4fd}
+#anim-area{position:relative;width:100%;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+svg#anim-svg{position:absolute;inset:0;width:100%;height:100%}
+
+#breath-label{
+  position:absolute;bottom:clamp(120px,22vh,180px);
+  left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  pointer-events:none;
+}
+.bl-icon{font-size:clamp(28px,8vw,52px);transition:opacity .3s}
+.bl-text{font-size:clamp(24px,6vw,44px);font-weight:900;letter-spacing:1px;transition:color .3s}
+
+#cycle-dots{
+  position:absolute;bottom:clamp(72px,12vh,110px);
+  left:50%;transform:translateX(-50%);display:flex;gap:10px;
+}
+.c-dot{width:clamp(12px,3vw,18px);height:clamp(12px,3vw,18px);border-radius:50%;background:rgba(255,255,255,.4);transition:background .3s,transform .3s}
+.c-dot.done  {background:#a3e635}
+.c-dot.active{background:white;transform:scale(1.3)}
+
+#controls{
+  position:absolute;bottom:0;left:0;right:0;
+  height:clamp(64px,11vh,88px);
+  display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,20px);
+  background:rgba(255,255,255,.55);backdrop-filter:blur(8px);
+  border-top:1px solid rgba(255,255,255,.8);padding:0 16px;
+}
+.ctrl-btn{
+  background:white;border:none;border-radius:50%;
+  width:clamp(48px,11vw,64px);height:clamp(48px,11vw,64px);
+  font-size:clamp(20px,5vw,28px);cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s,box-shadow .15s;
+}
+.ctrl-btn:active{transform:scale(.92)}
+
+/* ── FIN ── */
+#screen-end{background:linear-gradient(160deg,#fef9c3 0%,#fde68a 60%,#fcd34d 100%)}
+.end-star{font-size:clamp(64px,18vw,110px);animation:starPop .6s cubic-bezier(.36,.07,.19,.97)}
+@keyframes starPop{0%{transform:scale(0) rotate(-20deg)}70%{transform:scale(1.2) rotate(5deg)}100%{transform:scale(1)}}
+.end-title{font-size:clamp(26px,7vw,52px);font-weight:900;color:#92400e;margin:12px 0 8px;text-align:center}
+.end-sub  {font-size:clamp(16px,4vw,26px);color:#b45309;margin-bottom:36px;text-align:center}
+.end-btns {display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.end-btn{
+  padding:clamp(14px,3vh,20px) clamp(24px,6vw,40px);
+  border:none;border-radius:50px;cursor:pointer;font-weight:900;
+  font-size:clamp(16px,4vw,22px);
+  box-shadow:0 6px 20px rgba(0,0,0,.15);transition:transform .15s;
+}
+.end-btn:active{transform:scale(.95)}
+.end-btn-replay{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:white}
+.end-btn-home  {background:white;color:#374151}
+
+.confetti{
+  position:fixed;pointer-events:none;
+  animation:fall linear forwards;
+}
+@keyframes fall{
+  0%  {transform:translateY(-20px) rotate(0deg);opacity:1}
+  100%{transform:translateY(110vh) rotate(720deg);opacity:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ACCUEIL -->
+<div id="screen-home">
+  <div class="home-title">Respiration 🌬️</div>
+  <div class="home-sub">Choisis un exercice</div>
+  <div class="ex-cards">
+    <div class="ex-card balloon" onclick="startExercise('balloon')">
+      <svg width="60" height="72" viewBox="0 0 60 72">
+        <defs>
+          <radialGradient id="hbg" cx="38%" cy="32%" r="60%">
+            <stop offset="0%" stop-color="#fda4af"/>
+            <stop offset="55%" stop-color="#f43f5e"/>
+            <stop offset="100%" stop-color="#be123c"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="30" cy="26" rx="20" ry="23" fill="url(#hbg)"/>
+        <ellipse cx="22" cy="16" rx="5" ry="3" fill="rgba(255,255,255,.5)" transform="rotate(-18,22,16)"/>
+        <ellipse cx="30" cy="49" rx="3" ry="2" fill="#be123c"/>
+        <path d="M30 51 Q28 62 30 70" stroke="#9ca3af" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="ex-card-name">Ballon</div>
+    </div>
+    <div class="ex-card bubbles" onclick="startExercise('bubbles')">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <defs>
+          <radialGradient id="hbb" cx="35%" cy="30%" r="65%">
+            <stop offset="0%" stop-color="rgba(255,255,255,.95)"/>
+            <stop offset="45%" stop-color="rgba(125,211,252,.6)"/>
+            <stop offset="100%" stop-color="rgba(14,165,233,.3)"/>
+          </radialGradient>
+        </defs>
+        <circle cx="32" cy="36" r="20" fill="url(#hbb)" stroke="rgba(125,211,252,.7)" stroke-width="1.5"/>
+        <ellipse cx="24" cy="28" rx="5" ry="3" fill="rgba(255,255,255,.7)" transform="rotate(-20,24,28)"/>
+        <circle cx="12" cy="18" r="8" fill="url(#hbb)" stroke="rgba(125,211,252,.6)" stroke-width="1"/>
+        <ellipse cx="8" cy="14" rx="2" ry="1.5" fill="rgba(255,255,255,.6)"/>
+        <circle cx="50" cy="24" r="6" fill="url(#hbb)" stroke="rgba(125,211,252,.6)" stroke-width="1"/>
+      </svg>
+      <div class="ex-card-name">Bulles</div>
+    </div>
+    <div class="ex-card cloud" onclick="startExercise('cloud')">
+      <svg width="68" height="56" viewBox="0 0 68 56">
+        <circle cx="34" cy="18" r="10" fill="#fef08a"/>
+        <line x1="34" y1="4" x2="34" y2="2" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="46" y1="8" x2="48" y2="6" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="50" y1="20" x2="53" y2="20" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="22" y1="8" x2="20" y2="6" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="18" y1="20" x2="15" y2="20" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
+        <ellipse cx="30" cy="44" rx="22" ry="14" fill="white"/>
+        <ellipse cx="18" cy="48" rx="13" ry="10" fill="white"/>
+        <ellipse cx="44" cy="47" rx="15" ry="11" fill="white"/>
+        <ellipse cx="30" cy="36" rx="13" ry="10" fill="white"/>
+      </svg>
+      <div class="ex-card-name">Nuage</div>
+    </div>
+  </div>
+</div>
+
+<!-- EXERCICE -->
+<div id="screen-exercise" class="hidden">
+  <div id="anim-area">
+    <svg id="anim-svg" viewBox="0 0 400 480" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="breath-label">
+      <div class="bl-icon" id="bl-icon">🌿</div>
+      <div class="bl-text" id="bl-text" style="color:#16a34a">Inspire</div>
+    </div>
+    <div id="cycle-dots"></div>
+  </div>
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-sound" onclick="toggleSound()">🔊</button>
+    <button class="ctrl-btn" id="btn-pause" onclick="togglePause()">⏸️</button>
+    <button class="ctrl-btn" onclick="restartExercise()">🔄</button>
+    <button class="ctrl-btn" onclick="goHome()">🏠</button>
+  </div>
+</div>
+
+<!-- FIN -->
+<div id="screen-end" class="hidden">
+  <div class="end-star">🌟</div>
+  <div class="end-title">Bravo !</div>
+  <div class="end-sub">Tu as bien respiré 💛</div>
+  <div class="end-btns">
+    <button class="end-btn end-btn-replay" onclick="replayExercise()">▶️ Encore</button>
+    <button class="end-btn end-btn-home"   onclick="goHome()">🏠 Accueil</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const CYCLES  = 5;
+// Durées par exercice (ms) — ballon 30s, bulles 60s, nuage 120s
+const DURATIONS = {
+  balloon: { inhale: 3000, exhale: 3000 },   // 3s + 3s
+  bubbles: { inhale: 3500, exhale: 3500 },   // 3.5s + 3.5s
+  cloud:   { inhale: 4000, exhale: 4000 },   // 4s + 4s
+};
+let INHALE = 3000, EXHALE = 3000;
+const NS      = 'http://www.w3.org/2000/svg';
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let currentEx   = null;
+let cyclesDone  = 0;
+let phase       = 'inhale';
+let paused      = false;
+let soundOn     = true;
+let rafId       = null;
+let phaseStart  = null;
+let phaseElapsed= 0;
+
+// ══════════════════════════════════════════
+// SON
+// ══════════════════════════════════════════
+let audioCtx = null;
+function getACtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+function tone(freq, dur, vol=0.07){
+  if(!soundOn) return;
+  try{
+    const ctx=getACtx(), o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,ctx.currentTime);
+    g.gain.linearRampToValueAtTime(vol, ctx.currentTime+.15);
+    g.gain.linearRampToValueAtTime(0,   ctx.currentTime+dur/1000-.1);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime+dur/1000);
+  }catch(e){}
+}
+const playInhale  = ()=> tone(260,350);
+const playExhale  = ()=> tone(196,450);
+const playSuccess = ()=> [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,280,.1),i*130));
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function showScreen(id){
+  ['screen-home','screen-exercise','screen-end'].forEach(s=>
+    document.getElementById(s).classList.toggle('hidden', s!==id));
+}
+function goHome(){ stopLoop(); showScreen('screen-home'); }
+function replayExercise(){ startExercise(currentEx); }
+function restartExercise(){ startExercise(currentEx); }
+
+function startExercise(ex){
+  currentEx  = ex;
+  cyclesDone = 0;
+  phase      = 'inhale';
+  paused     = false;
+  phaseElapsed=0;
+  stopLoop();
+  document.getElementById('btn-pause').textContent='⏸️';
+  INHALE = DURATIONS[ex].inhale;
+  EXHALE = DURATIONS[ex].exhale;
+  setupBg(ex);
+  buildDots();
+  setLabel('inhale');
+  showScreen('screen-exercise');
+  // Petite pause pour que le DOM s'affiche avant l'init SVG
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    ({balloon:initBalloon, bubbles:initBubbles, cloud:initCloud}[ex])();
+    playInhale();
+    startLoop();
+  }));
+}
+
+// ══════════════════════════════════════════
+// BOUCLE RAF
+// ══════════════════════════════════════════
+function startLoop(){
+  stopLoop();
+  phaseStart = performance.now() - phaseElapsed;
+  rafId = requestAnimationFrame(loop);
+}
+function stopLoop(){
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+}
+
+function loop(now){
+  if(paused) return;
+  const dur = phase==='inhale' ? INHALE : EXHALE;
+  phaseElapsed = now - phaseStart;
+  const t = Math.min(phaseElapsed/dur, 1);
+
+  drawFrame(currentEx, t, phase);
+
+  if(t>=1){
+    if(phase==='inhale'){
+      phase='exhale'; phaseElapsed=0; phaseStart=performance.now();
+      setLabel('exhale'); playExhale();
+    } else {
+      cyclesDone++;
+      updateDots();
+      if(cyclesDone>=CYCLES){ showEnd(); return; }
+      phase='inhale'; phaseElapsed=0; phaseStart=performance.now();
+      setLabel('inhale'); playInhale();
+    }
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+function togglePause(){
+  paused=!paused;
+  document.getElementById('btn-pause').textContent=paused?'▶️':'⏸️';
+  if(!paused) startLoop();
+}
+function toggleSound(){
+  soundOn=!soundOn;
+  document.getElementById('btn-sound').textContent=soundOn?'🔊':'🔇';
+}
+
+// ══════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════
+function setupBg(ex){
+  document.getElementById('screen-exercise').style.background={
+    balloon:'linear-gradient(180deg,#0f0c29 0%,#1a1a4e 30%,#24243e 65%,#0f0c29 100%)',
+    bubbles:'linear-gradient(180deg,#0c4a6e 0%,#075985 20%,#0369a1 45%,#0284c7 65%,#0ea5e9 85%,#38bdf8 100%)',
+    cloud  :'linear-gradient(180deg,#e0f2fe 0%,#bae6fd 40%,#7dd3fc 75%,#93c5fd 100%)',
+  }[ex];
+}
+
+function setLabel(ph){
+  document.getElementById('bl-icon').textContent = ph==='inhale'?'🌿':'💨';
+  const t=document.getElementById('bl-text');
+  t.textContent= ph==='inhale'?'Inspire':'Expire';
+  t.style.color= ph==='inhale'?'#16a34a':'#2563eb';
+}
+
+function buildDots(){
+  const c=document.getElementById('cycle-dots'); c.innerHTML='';
+  for(let i=0;i<CYCLES;i++){
+    const d=document.createElement('div');
+    d.className='c-dot'+(i===0?' active':'');
+    d.id='dot-'+i; c.appendChild(d);
+  }
+}
+function updateDots(){
+  for(let i=0;i<CYCLES;i++){
+    const d=document.getElementById('dot-'+i); if(!d) continue;
+    d.className='c-dot'+(i<cyclesDone?' done':i===cyclesDone?' active':'');
+  }
+}
+
+// ══════════════════════════════════════════
+// SVG HELPERS
+// ══════════════════════════════════════════
+const svg=document.getElementById('anim-svg');
+function el(tag,attrs={}){
+  const e=document.createElementNS(NS,tag);
+  Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+  return e;
+}
+function clearSvg(){ while(svg.lastChild) svg.removeChild(svg.lastChild); }
+
+function addDefs(){
+  const d=el('defs');
+
+  // Gradient ballon x3
+  [['bGrad0','#fda4af','#f43f5e','#be123c'],
+   ['bGrad1','#fef08a','#facc15','#ca8a04'],
+   ['bGrad2','#a5f3fc','#22d3ee','#0891b2']].forEach(([id,c0,c1,c2])=>{
+    const g=el('radialGradient',{id,cx:'38%',cy:'35%',r:'60%'});
+    [{o:'0%',c:c0},{o:'55%',c:c1},{o:'100%',c:c2}].forEach(s=>{
+      const st=el('stop'); st.setAttribute('offset',s.o); st.setAttribute('stop-color',s.c); g.appendChild(st);
+    });
+    d.appendChild(g);
+  });
+
+  // Gradient bulle
+  const gb=el('radialGradient',{id:'bub',cx:'35%',cy:'30%',r:'65%'});
+  [{o:'0%',c:'rgba(255,255,255,.9)'},{o:'45%',c:'rgba(186,230,255,.55)'},{o:'100%',c:'rgba(96,165,250,.25)'}].forEach(s=>{
+    const st=el('stop'); st.setAttribute('offset',s.o); st.setAttribute('stop-color',s.c); gb.appendChild(st);
+  });
+  d.appendChild(gb);
+
+  // Gradient nuage
+  const gc=el('radialGradient',{id:'cldGrad',cx:'50%',cy:'40%',r:'60%'});
+  [{o:'0%',c:'#ffffff'},{o:'100%',c:'#dbeafe'}].forEach(s=>{
+    const st=el('stop'); st.setAttribute('offset',s.o); st.setAttribute('stop-color',s.c); gc.appendChild(st);
+  });
+  d.appendChild(gc);
+
+  // Filtre glow doux
+  const f=el('filter',{id:'glow',x:'-20%',y:'-20%',width:'140%',height:'140%'});
+  const fe=el('feGaussianBlur',{in:'SourceGraphic',stdDeviation:'5',result:'b'});
+  const fm=el('feMerge');
+  const fmn1=el('feMergeNode',{in:'b'}); const fmn2=el('feMergeNode',{in:'SourceGraphic'});
+  fm.appendChild(fmn1); fm.appendChild(fmn2); f.appendChild(fe); f.appendChild(fm);
+  d.appendChild(f);
+
+  svg.appendChild(d);
+}
+
+function ease(t){ return t<.5?2*t*t:-1+(4-2*t)*t; }
+
+// ══════════════════════════════════════════
+// 🎈 BALLON
+// ══════════════════════════════════════════
+function initBalloon(){
+  clearSvg(); addDefs();
+
+  // ── Voie lactée très douce ──
+  for(let i=0;i<6;i++){
+    const x=30+i*60, w=18+Math.random()*30;
+    svg.appendChild(el('ellipse',{cx:x+20,cy:100+i%2*40,rx:w,ry:'6',
+      fill:'rgba(255,255,255,.06)',transform:`rotate(${-20+i*8},${x+20},${100+i%2*40})`}));
+  }
+
+  // ── Étoiles blanches de différentes tailles ──
+  const stars=[
+    [25,35,2.2],[70,18,1.4],[130,45,2.8],[180,22,1.6],[240,38,2],[300,15,2.4],
+    [355,42,1.8],[45,80,1.2],[110,95,2],[170,70,1.6],[230,88,2.2],[290,72,1.4],
+    [350,90,2],[380,50,1.6],[15,130,2],[85,148,1.8],[150,125,1.2],[210,140,2.4],
+    [270,130,1.6],[330,145,2],[375,125,1.4],[50,175,2.2],[120,185,1.6],
+    [200,168,2],[260,178,1.4],[330,170,1.8],[380,180,2.2],[30,210,1.4],
+    [95,220,2],[175,205,1.8],[245,215,2.4],[305,200,1.6],[370,210,1.2],
+    [15,250,2],[80,255,1.6],[155,240,2.2],[225,250,1.4],[290,245,2],
+    [345,258,1.8],[55,280,1.2],[130,275,2.4],[210,285,1.6],[275,270,2],
+    [340,280,1.4],[20,310,1.8],[100,305,2.2],[180,315,1.6],[250,300,2],
+    [320,310,1.4],[370,300,2.2],
+  ];
+  stars.forEach(([x,y,r])=>{
+    const g=el('g');
+    // Point brillant
+    g.appendChild(el('circle',{cx:x,cy:y,r,fill:'white',opacity:String(.6+Math.random()*.4)}));
+    // Petite croix de brillance sur les plus grosses
+    if(r>2){
+      g.appendChild(el('line',{x1:x,y1:y-r*2.5,x2:x,y2:y+r*2.5,
+        stroke:'white','stroke-width':'.5',opacity:'.4'}));
+      g.appendChild(el('line',{x1:x-r*2.5,y1:y,x2:x+r*2.5,y2:y,
+        stroke:'white','stroke-width':'.5',opacity:'.4'}));
+    }
+    svg.appendChild(g);
+  });
+
+  // ── Lune croissant douce ──
+  const luneG=el('g',{transform:'translate(330,60)'});
+  luneG.appendChild(el('circle',{cx:'0',cy:'0',r:'30',fill:'#fef9c3'}));
+  luneG.appendChild(el('circle',{cx:'12',cy:'-6',r:'26',fill:'#1a1a4e'})); // masque
+  luneG.appendChild(el('circle',{cx:'0',cy:'0',r:'34',fill:'rgba(254,249,195,.12)'})); // halo
+  svg.appendChild(luneG);
+
+  // ── Ficelle ──
+  svg.appendChild(el('path',{id:'rope',d:'M200 310 Q196 370 198 430',
+    stroke:'#cbd5e1','stroke-width':'2',fill:'none','stroke-linecap':'round'}));
+  // ── Corps ballon ──
+  svg.appendChild(el('ellipse',{id:'ball',cx:'200',cy:'220',rx:'68',ry:'78',
+    fill:'url(#bGrad0)',filter:'url(#glow)'}));
+  // ── Brillance ──
+  svg.appendChild(el('ellipse',{id:'shine',cx:'178',cy:'192',rx:'16',ry:'10',
+    fill:'rgba(255,255,255,.58)',transform:'rotate(-18,178,192)'}));
+  // ── Nœud ──
+  svg.appendChild(el('ellipse',{id:'knot',cx:'200',cy:'302',rx:'7',ry:'5',fill:'#be123c'}));
+}
+
+
+
+function drawBalloon(t, ph){
+  const prog=ease(ph==='inhale'?t:1-t);
+  const rx=58+prog*40, ry=68+prog*46, cy=230-prog*20;
+  const b=document.getElementById('ball'); if(!b) return;
+  b.setAttribute('rx',rx); b.setAttribute('ry',ry); b.setAttribute('cy',cy);
+  b.setAttribute('fill','url(#bGrad'+(cyclesDone%3)+')');
+  const sh=document.getElementById('shine');
+  sh.setAttribute('cx',200-rx*.28); sh.setAttribute('cy',cy-ry*.36);
+  sh.setAttribute('rx',rx*.22);     sh.setAttribute('ry',ry*.14);
+  const kn=document.getElementById('knot'), ky=cy+ry+4;
+  kn.setAttribute('cy',ky);
+  document.getElementById('rope').setAttribute('d',`M200 ${ky+5} Q196 ${ky+56} 198 ${ky+110}`);
+}
+
+// ══════════════════════════════════════════
+// 🫧 BULLES
+// ══════════════════════════════════════════
+function initBubbles(){
+  clearSvg(); addDefs();
+  trailCount = 0;
+
+  // ── Couches d'eau (effet profondeur) ──
+  svg.appendChild(el('rect',{x:0,y:0,width:400,height:480,fill:'rgba(2,132,199,.08)'}));
+
+  // Bandes horizontales douces
+  [
+    {y:0,   h:120, c:'rgba(7,89,133,.15)'},
+    {y:120, h:120, c:'rgba(3,105,161,.12)'},
+    {y:240, h:120, c:'rgba(2,132,199,.1)'},
+    {y:360, h:120, c:'rgba(14,165,233,.08)'},
+  ].forEach(b=>{
+    svg.appendChild(el('rect',{x:0,y:b.y,width:400,height:b.h,fill:b.c}));
+  });
+
+  // ── Rayons de lumière depuis la surface ──
+  const rayColors=['rgba(125,211,252,.07)','rgba(186,230,255,.06)','rgba(255,255,255,.05)'];
+  [
+    {x:60, w:28},{x:130,w:20},{x:200,w:35},{x:270,w:22},{x:340,w:26}
+  ].forEach((r,i)=>{
+    svg.appendChild(el('polygon',{
+      points:`${r.x-r.w/2},0 ${r.x+r.w/2},0 ${r.x+r.w*1.5},480 ${r.x-r.w*1.5},480`,
+      fill:rayColors[i%3]
+    }));
+  });
+
+  // ── Sable du fond ──
+  svg.appendChild(el('ellipse',{cx:'200',cy:'490',rx:'260',ry:'55',fill:'#ca8a04',opacity:'.28'}));
+  svg.appendChild(el('ellipse',{cx:'200',cy:'485',rx:'200',ry:'35',fill:'#fef08a',opacity:'.12'}));
+  // Ondulations du sable
+  svg.appendChild(el('path',{d:'M20 455 Q60 448 100 455 Q140 462 180 455 Q220 448 260 455 Q300 462 340 455 Q370 448 400 455',
+    stroke:'rgba(202,138,4,.4)','stroke-width':'2',fill:'none'}));
+
+  // ── Algues ──
+  drawAlgue(35,  460, '#4ade80');
+  drawAlgue(85,  465, '#22c55e');
+  drawAlgue(315, 460, '#86efac');
+  drawAlgue(365, 462, '#4ade80');
+
+  // ── Coraux ──
+  drawCoral(130, 455, '#f472b6');
+  drawCoral(255, 458, '#fb923c');
+  drawCoral(175, 460, '#f43f5e', 0.75);
+  drawCoral(200, 455, '#a78bfa', 0.65);
+
+  // ── Poissons ──
+  drawFish(70,  190, 1,  '#fbbf24', .9);
+  drawFish(310, 145, -1, '#34d399', .9);
+  drawFish(145,  90, 1,  '#f472b6', .75);
+  drawFish(320, 280, -1, '#60a5fa', .75);
+  drawFish(55,  340, 1,  '#a78bfa', .65);
+  drawFish(280,  60, -1, '#fb923c', .6);
+
+  // ── Petites bulles décoratives de fond ──
+  [[50,300,4],[130,220,3],[250,350,5],[340,180,4],[90,140,3],
+   [200,420,3],[310,380,4],[160,310,3],[260,250,5]].forEach(([x,y,r])=>{
+    svg.appendChild(el('circle',{cx:x,cy:y,r,
+      fill:'none',stroke:'rgba(186,230,255,.35)','stroke-width':'1.2'}));
+  });
+
+  // ── Bulle principale ──
+  svg.appendChild(el('circle',{id:'mb',cx:'200',cy:'370',r:'8',
+    fill:'url(#bub)',stroke:'rgba(186,230,255,.7)','stroke-width':'2',opacity:'0'}));
+  svg.appendChild(el('ellipse',{id:'mbr',cx:'183',cy:'350',rx:'7',ry:'4',
+    fill:'rgba(255,255,255,.7)',opacity:'0'}));
+}
+
+
+let trailCount=0;
+function drawBubbles(t, ph){
+  const mb=document.getElementById('mb'),mbr=document.getElementById('mbr');
+  if(!mb) return;
+  if(ph==='inhale'){
+    const e=ease(t), r=8+e*68, cy=340-e*18;
+    mb.setAttribute('r',r); mb.setAttribute('cy',cy);
+    mb.setAttribute('opacity',.15+e*.78);
+    mbr.setAttribute('cx',200-r*.28); mbr.setAttribute('cy',cy-r*.36);
+    mbr.setAttribute('rx',r*.22);     mbr.setAttribute('ry',r*.14);
+    mbr.setAttribute('opacity',.08+e*.62);
+  } else {
+    const e=ease(t), r=76-e*12, cy=322-e*350, op=1-e*.92;
+    mb.setAttribute('r',r); mb.setAttribute('cy',cy);
+    mb.setAttribute('opacity',op);
+    mbr.setAttribute('cy',cy-r*.36); mbr.setAttribute('opacity',op*.75);
+    // Ajouter une bulle fantôme au moment où la bulle part
+    if(t>.05 && t<.08 && trailCount<cyclesDone+1){
+      trailCount++;
+      const x=100+Math.random()*200, y=60+Math.random()*120;
+      const tr=el('circle',{cx:x,cy:y,r:12+Math.random()*22,
+        fill:'url(#bub)',stroke:'rgba(186,230,255,.5)','stroke-width':'1.5',opacity:'.75'});
+      const main=document.getElementById('mb');
+      svg.insertBefore(tr, main);
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+// ☁️ NUAGE — entièrement refait
+// ══════════════════════════════════════════
+// Le nuage commence à gauche, avance vers la droite pendant l'expiration,
+// puis repart immédiatement à gauche pour le cycle suivant.
+let cloudPosX = 90;   // position X du centre du nuage (référence)
+const CLOUD_START_X = 90;
+const CLOUD_END_X   = 310;
+
+function initCloud(){
+  clearSvg(); addDefs();
+  cloudPosX = CLOUD_START_X;
+  trailCount = 0;
+
+  // ── Ciel bleu dégradé avec horizon ──
+  // Sol / prairie en bas
+  svg.appendChild(el('ellipse',{cx:'200',cy:'480',rx:'280',ry:'60',fill:'#86efac',opacity:'.55'}));
+  svg.appendChild(el('ellipse',{cx:'200',cy:'470',rx:'220',ry:'40',fill:'#4ade80',opacity:'.35'}));
+  // Arbres décoratifs
+  drawTree(30, 420, '#22c55e', 0.7);
+  drawTree(370, 415, '#16a34a', 0.65);
+  drawTree(320, 430, '#4ade80', 0.5);
+
+
+
+  // ── Petits oiseaux ──
+  [[55,150],[185,105],[275,165],[130,200]].forEach(([x,y])=>drawBird(x,y,.55));
+
+  // ── Nuages de fond fixes ──
+  drawStaticClouds(0.32);
+
+  // ── Nuage principal ──
+  renderCloud(CLOUD_START_X, 240, 1.0);
+}
+
+function drawTree(x, y, color, scale){
+  const g=el('g',{transform:`translate(${x},${y}) scale(${scale})`});
+  // Tronc
+  g.appendChild(el('rect',{x:'-5',y:'-20',width:'10',height:'25',rx:'3',fill:'#92400e'}));
+  // Feuillage en 3 niveaux
+  [{cy:-50,rx:22,ry:26},{cy:-70,rx:18,ry:22},{cy:-85,rx:12,ry:16}].forEach(c=>{
+    g.appendChild(el('ellipse',{cx:'0',cy:c.cy,rx:c.rx,ry:c.ry,fill:color}));
+  });
+  svg.appendChild(g);
+}
+
+
+function drawCloud_anim(t, ph){
+  let cx, scale;
+  if(ph==='inhale'){
+    // Nuage grossit légèrement sur place
+    scale = 1.0 + ease(t)*0.18;
+    cx    = cloudPosX;
+  } else {
+    // Nuage avance vers la droite
+    const e=ease(t);
+    cx    = cloudPosX + (CLOUD_END_X - cloudPosX)*e;
+    scale = 1.18 - e*0.18;
+    // À la toute fin de l'expiration, remettre la position à gauche pour le prochain cycle
+    if(t>=0.99){
+      cloudPosX = CLOUD_START_X;
+    }
+  }
+  renderCloud(cx, 240, scale);
+}
+
+function renderCloud(cx, cy, scale){
+  // Supprimer l'ancien nuage principal
+  const old=document.getElementById('cloud-main');
+  if(old) old.remove();
+
+  const g=el('g',{id:'cloud-main',transform:`translate(${cx},${cy}) scale(${scale})`});
+  // Corps : superposition de 6 ellipses pour un aspect doux
+  [
+    {dx:0,  dy:0,  rx:52, ry:36},
+    {dx:-40,dy:14, rx:34, ry:24},
+    {dx: 40,dy:14, rx:36, ry:26},
+    {dx:-18,dy:-24,rx:30, ry:22},
+    {dx: 20,dy:-26,rx:28, ry:20},
+    {dx:  0,dy: 30,rx:62, ry:16}, // base plate
+  ].forEach(c=>{
+    g.appendChild(el('ellipse',{cx:c.dx,cy:c.dy,rx:c.rx,ry:c.ry,fill:'url(#cldGrad)'}));
+  });
+  // Ombre
+  g.appendChild(el('ellipse',{cx:'0',cy:'48',rx:'58',ry:'10',fill:'rgba(100,130,180,.12)'}));
+  svg.appendChild(g);
+}
+
+function drawStaticClouds(opacity){
+  [[40,70,22],[330,90,16],[175,40,14],[290,50,12]].forEach(([x,y,r])=>{
+    const g=el('g',{transform:`translate(${x},${y})`,opacity});
+    [{dx:0,dy:0,rx:r*1.4,ry:r},{dx:-r*.8,dy:r*.3,rx:r*.9,ry:r*.65},{dx:r*.85,dy:r*.3,rx:r,ry:r*.7}].forEach(c=>{
+      g.appendChild(el('ellipse',{cx:c.dx,cy:c.dy,rx:c.rx,ry:c.ry,fill:'white'}));
+    });
+    svg.appendChild(g);
+  });
+}
+
+function drawAlgue(x, baseY, color){
+  const pts=[];
+  for(let i=0;i<=10;i++){
+    const t=i/10;
+    pts.push(`${x+Math.sin(t*Math.PI*2.5)*12},${baseY-t*65}`);
+  }
+  svg.appendChild(el('polyline',{points:pts.join(' '),stroke:color,'stroke-width':'4',fill:'none','stroke-linecap':'round','stroke-linejoin':'round',opacity:'.9'}));
+  for(let i=2;i<9;i+=2){
+    const t=i/10, lx=x+Math.sin(t*Math.PI*2.5)*12, ly=baseY-t*65;
+    const off=i%4===0?8:-8;
+    svg.appendChild(el('ellipse',{cx:lx+off,cy:ly,rx:'7',ry:'3',fill:color,opacity:'.8',transform:`rotate(${i%4===0?30:-30},${lx+off},${ly})`}));
+  }
+}
+
+function drawCoral(x, y, color, scale=1){
+  const g=el('g',{transform:`translate(${x},${y}) scale(${scale})`});
+  [[0,-45],[-12,-35],[12,-35],[-20,-20],[20,-20]].forEach(([dx,dy])=>{
+    g.appendChild(el('line',{x1:0,y1:0,x2:dx,y2:dy,stroke:color,'stroke-width':'4','stroke-linecap':'round',opacity:'.9'}));
+    g.appendChild(el('circle',{cx:dx,cy:dy,r:'5',fill:color,opacity:'.95'}));
+  });
+  svg.appendChild(g);
+}
+
+function drawFish(cx, cy, dir, color, opacity=1){
+  const g=el('g',{transform:`translate(${cx},${cy}) scale(${dir},1)`,opacity});
+  g.appendChild(el('ellipse',{cx:0,cy:0,rx:'20',ry:'11',fill:color}));
+  g.appendChild(el('polygon',{points:'20,0 32,-10 32,10',fill:color,opacity:'.8'}));
+  g.appendChild(el('circle',{cx:'-10',cy:'-3',r:'3',fill:'white'}));
+  g.appendChild(el('circle',{cx:'-10',cy:'-3',r:'1.5',fill:'#1e293b'}));
+  g.appendChild(el('ellipse',{cx:'2',cy:'-9',rx:'8',ry:'4',fill:color,opacity:'.6',transform:'rotate(-20,2,-9)'}));
+  svg.appendChild(g);
+}
+
+function drawBird(x,y,scale){
+  const g=el('g',{transform:`translate(${x},${y}) scale(${scale})`});
+  g.appendChild(el('path',{d:'M-18,0 Q-4,-10 0,0 Q4,-10 18,0',
+    stroke:'#94a3b8','stroke-width':'2.5',fill:'none','stroke-linecap':'round'}));
+  svg.appendChild(g);
+}
+
+// ══════════════════════════════════════════
+// DISPATCH
+// ══════════════════════════════════════════
+function drawFrame(ex, t, ph){
+  if(ex==='balloon') drawBalloon(t,ph);
+  else if(ex==='bubbles') drawBubbles(t,ph);
+  else if(ex==='cloud')   drawCloud_anim(t,ph);
+}
+
+// ══════════════════════════════════════════
+// FIN
+// ══════════════════════════════════════════
+function showEnd(){
+  stopLoop();
+  playSuccess();
+
+  // Bulles qui montent
+  if(currentEx==='bubbles'){
+    for(let i=0;i<10;i++) setTimeout(()=>{
+      const b=el('circle',{cx:40+Math.random()*320,cy:420+Math.random()*50,
+        r:12+Math.random()*28,fill:'url(#bub)',stroke:'rgba(186,230,255,.5)',
+        'stroke-width':'1.5',opacity:'.8'});
+      svg.appendChild(b);
+    }, i*90);
+  }
+  setTimeout(()=>{ launchConfetti(); showScreen('screen-end'); }, 600);
+}
+
+function launchConfetti(){
+  const cols=['#f43f5e','#facc15','#34d399','#60a5fa','#a78bfa','#fb923c'];
+  for(let i=0;i<40;i++){
+    const c=document.createElement('div'); c.className='confetti';
+    c.style.cssText=`left:${Math.random()*100}vw;top:-20px;
+      background:${cols[i%cols.length]};
+      width:${6+Math.random()*9}px;height:${6+Math.random()*9}px;
+      border-radius:${Math.random()>.5?'50%':'2px'};
+      animation-duration:${2.2+Math.random()*2.5}s;
+      animation-delay:${Math.random()*1.2}s`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),6000);
+  }
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+showScreen('screen-home');
+</script>
+</body>
+</html>
