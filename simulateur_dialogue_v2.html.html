@@ -1,0 +1,2459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur de Dialogue</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#F0F4F8;min-height:100vh;padding:16px}
+#app{max-width:580px;margin:0 auto}
+h1{font-size:21px;font-weight:700;color:#111;margin-bottom:4px}
+.subtitle{font-size:13px;color:#888;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sc-card{background:white;border-radius:14px;padding:16px;border:2px solid #eee;cursor:pointer;transition:all .15s;text-align:center}
+.sc-card:hover{border-color:#378ADD;transform:translateY(-1px)}
+.sc-card.done{border-color:#639922;background:#f8fff4}
+.sc-icon{font-size:32px;margin-bottom:6px}
+.sc-name{font-size:13px;font-weight:700;color:#111}
+.sc-done{font-size:11px;color:#639922;margin-top:4px;font-weight:600}
+.chat-box{background:white;border-radius:16px;overflow:hidden;margin-bottom:12px;border:1px solid #eee}
+.chat-head{padding:12px 16px;background:#378ADD;color:white;display:flex;align-items:center;gap:10px}
+.chat-head-icon{font-size:26px}
+.chat-head-name{font-size:14px;font-weight:700}
+.chat-head-ctx{font-size:11px;opacity:.85}
+.chat-msgs{padding:14px;min-height:180px;display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto}
+.bubble-wrap{display:flex;flex-direction:column}
+.bubble-wrap.me{align-items:flex-end}
+.bubble-lbl{font-size:10px;color:#aaa;margin-bottom:2px}
+.bubble{max-width:88%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5}
+.bubble.other{background:#f0f0f0;color:#111;border-bottom-left-radius:4px}
+.bubble.me-ok{background:#378ADD;color:white;border-bottom-right-radius:4px}
+.bubble.me-warn{background:#FAEEDA;color:#633806;border:1.5px solid #BA7517;border-bottom-right-radius:4px}
+.bubble.me-bad{background:#FCEBEB;color:#791F1F;border:1.5px solid #E24B4A;border-bottom-right-radius:4px}
+.reaction{border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:10px;line-height:1.5;border:1px solid}
+.r-ok{background:#EAF3DE;color:#27500A;border-color:#97C459}
+.r-warn{background:#FAEEDA;color:#633806;border-color:#FAC775}
+.r-bad{background:#FCEBEB;color:#791F1F;border-color:#F09595}
+.choices{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.choice{background:white;border:2px solid #ddd;border-radius:12px;padding:12px 14px;font-size:13px;color:#111;cursor:pointer;text-align:left;line-height:1.4;transition:all .13s;display:flex;align-items:flex-start;gap:8px}
+.choice:hover:not([disabled]){border-color:#378ADD;background:#EBF4FF}
+.choice[disabled]{cursor:default}
+.ltr{min-width:22px;height:22px;border-radius:6px;background:#eee;color:#555;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ltr-ok{background:#378ADD;color:white}
+.ltr-warn{background:#BA7517;color:white}
+.ltr-bad{background:#E24B4A;color:white}
+.ltr-reveal{background:#639922;color:white}
+.choice.dim{opacity:.4}
+.voice-bar{display:flex;align-items:center;gap:10px;background:white;border-radius:12px;padding:10px 14px;margin-bottom:10px;border:1px solid #eee}
+.mic-btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mic-idle{background:#eee;color:#555}
+.mic-on{background:#E24B4A;color:white;animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.voice-status{font-size:12px;color:#888;flex:1;line-height:1.4}
+.speak-btn{background:#f0f0f0;border:none;border-radius:8px;padding:6px 10px;font-size:11px;color:#555;cursor:pointer;white-space:nowrap}
+.speak-btn:hover{background:#378ADD;color:white}
+.prog{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.prog-dot{height:7px;border-radius:4px;background:#ddd;width:28px}
+.pd-ok{background:#639922}
+.pd-warn{background:#BA7517}
+.pd-bad{background:#E24B4A}
+.pd-active{background:#378ADD}
+.btn{padding:10px 20px;border-radius:10px;border:1.5px solid #ddd;background:white;cursor:pointer;font-size:13px;font-weight:600;color:#333;margin-right:8px;margin-bottom:8px;display:inline-block}
+.btn:hover{background:#f0f0f0}
+.btn-p{background:#378ADD;color:white;border-color:#378ADD}
+.btn-p:hover{background:#185FA5}
+.btn-back{background:none;border:none;color:#888;cursor:pointer;font-size:13px;padding:0;margin-bottom:14px;display:flex;align-items:center;gap:4px}
+.score-big{font-size:48px;font-weight:700;text-align:center;margin:14px 0 4px;color:#111}
+.score-sub{text-align:center;font-size:14px;color:#555;margin-bottom:16px;line-height:1.5}
+.tip{background:#E6F1FB;border-radius:12px;padding:13px;font-size:13px;color:#0C447C;line-height:1.6;margin-bottom:14px}
+.error-list{background:white;border-radius:12px;border:1px solid #eee;overflow:hidden;margin-bottom:14px}
+.error-item{padding:11px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;line-height:1.5}
+.error-item:last-child{border-bottom:none}
+.error-q{color:#888;font-size:11px;margin-bottom:3px}
+.error-said{color:#E24B4A;margin-bottom:2px}
+.error-better{color:#27500A}
+.badges{display:flex;gap:8px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.badge{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ─── SCÉNARIOS ────────────────────────────────────────────────────────────────
+// quality: "ok"=bonne, "warn"=passable, "bad"=mauvaise
+// Les bonnes réponses sont placées à des positions variées (pas toujours en 1er)
+const SCENARIOS=[
+{
+  id:"livraison",icon:"📦",name:"Commander une livraison",who:"Pizza Flash",ctx:"Tu commandes par téléphone",
+  start:"s1",
+  steps:{
+    s1:{other:"Allô, Pizza Flash, bonsoir !",
+      choices:[
+        {text:"Euh… vous livrez jusqu'à quelle heure ?",q:"warn",next:"s1w",r:"Jusqu'à 23h. Vous souhaitez commander ?",tip:"C'est une question hors sujet pour commencer. Mieux vaut d'abord expliquer ce que tu veux."},
+        {text:"(Silence, tu attends qu'il parle)",q:"bad",next:"s1b",r:"Allô ? Je vous entends ?",tip:"Le silence au téléphone est gênant. Il faut se présenter et expliquer ce qu'on veut."},
+        {text:"Bonsoir ! Je voudrais commander une pizza en livraison s'il vous plaît.",q:"ok",next:"s2",r:"Bien sûr ! Qu'est-ce que vous souhaitez ?"},
+        {text:"Ouais je veux une pizza, vous livrez ?",q:"warn",next:"s1w2",r:"Oui on livre. C'est pour quelle adresse ?",tip:"La formulation est un peu brusque. Un bonjour et une demande polie c'est mieux."},
+      ]},
+    s1b:{other:"Allô ? Je vous entends ?",
+      choices:[
+        {text:"Oui pardon ! Bonsoir, je voudrais commander une pizza s'il vous plaît.",q:"ok",next:"s2",r:"Très bien ! Qu'est-ce vous désirez ?"},
+        {text:"Oui oui je suis là.",q:"warn",next:"s1w3",r:"D'accord… vous souhaitez commander ?",tip:"Il faut expliquer pourquoi tu appelles, pas juste confirmer que tu es là."},
+        {text:"Ah oui, vous vendez des pizzas ?",q:"bad",next:"s1b2",r:"Oui c'est une pizzeria. Vous souhaitez commander ?",tip:"Appeler une pizzeria pour demander si elle vend des pizzas c'est très étrange."},
+        {text:"Bonsoir, je voudrais une pizza Margherita grande en livraison.",q:"ok",next:"s2b",r:"Parfait ! Et votre adresse ?"},
+      ]},
+    s1b2:{other:"Oui c'est une pizzeria. Vous souhaitez commander ?",
+      choices:[
+        {text:"Oui, une Margherita grande en livraison.",q:"ok",next:"s2b",r:"Très bien ! Votre adresse ?"},
+        {text:"Oui mais c'est pour savoir.",q:"bad",next:"s2",r:"D'accord. Qu'est-ce que vous voulez commander ?",tip:"Évite les réponses vagues, sois direct sur ce que tu veux."},
+        {text:"Oui s'il vous plaît, une pizza.",q:"warn",next:"s2",r:"Laquelle vous voulez ?",tip:"Dis directement le nom de la pizza et la taille."},
+        {text:"Oui bonsoir, une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+      ]},
+    s1w:{other:"On livre jusqu'à 23h. Vous souhaitez commander ?",
+      choices:[
+        {text:"Oui, une Margherita grande en livraison s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Votre adresse ?"},
+        {text:"Oui.",q:"warn",next:"s2",r:"Qu'est-ce que vous désirez ?",tip:"Un simple 'oui' ne suffit pas, explique ta commande."},
+        {text:"Peut-être, je sais pas encore.",q:"bad",next:"s1w3",r:"D'accord, rappelez quand vous êtes prêt.",tip:"N'appelle pas si tu n'es pas prêt à commander."},
+        {text:"Oui, je voudrais passer une commande.",q:"ok",next:"s2",r:"Qu'est-ce que vous désirez ?"},
+      ]},
+    s1w2:{other:"Oui on livre. C'est pour quelle adresse ?",
+      choices:[
+        {text:"Attendez, j'ai pas encore choisi ma pizza.",q:"warn",next:"s2",r:"Pas de problème, qu'est-ce que vous voulez ?",tip:"Mieux vaut avoir choisi avant d'appeler."},
+        {text:"Une Margherita grande, au 12 rue des Lilas à Bordeaux.",q:"ok",next:"s3",r:"Parfait, comptez 30 min. Vous payez comment ?"},
+        {text:"Je veux une pizza.",q:"bad",next:"s2",r:"Laquelle vous voulez ?",tip:"Sois précis sur le nom et la taille."},
+        {text:"Une Margherita grande s'il vous plaît, avant de donner l'adresse.",q:"ok",next:"s2b",r:"D'accord ! Votre adresse ?"},
+      ]},
+    s1w3:{other:"D'accord, rappelez quand vous êtes prêt.",
+      choices:[
+        {text:"Attendez ! Je veux une Margherita grande en livraison.",q:"ok",next:"s2b",r:"Pas de souci ! Votre adresse ?"},
+        {text:"Ok merci.",q:"bad",next:"end_bad",r:"",tip:""},
+        {text:"Oui pardon, je voulais une pizza.",q:"warn",next:"s2",r:"Laquelle ?",tip:""},
+        {text:"Pardon, je suis prêt. Une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+      ]},
+    s2:{other:"Qu'est-ce que vous désirez ?",
+      choices:[
+        {text:"Votre meilleure pizza.",q:"bad",next:"s2c",r:"On a plusieurs pizzas… vous voulez quoi comme garniture ?",tip:"'Votre meilleure' n'est pas une commande précise. Connais ton menu avant d'appeler."},
+        {text:"Une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Très bien ! Votre adresse ?"},
+        {text:"Je sais pas trop, vous avez quoi ?",q:"warn",next:"s2d",r:"On a Margherita, 4 fromages, Reine, Chorizo. Laquelle ?",tip:"Il vaut mieux regarder le menu avant d'appeler."},
+        {text:"Une grande pizza avec du fromage.",q:"warn",next:"s2c",r:"Margherita ou 4 fromages ?",tip:"Donne le nom exact de la pizza que tu veux."},
+      ]},
+    s2b:{other:"Votre adresse s'il vous plaît ?",
+      choices:[
+        {text:"C'est pas loin d'ici.",q:"bad",next:"s2b2",r:"Je n'ai pas compris, vous habitez où exactement ?",tip:"Le livreur ne sait pas où tu es ! Donne toujours une adresse complète."},
+        {text:"12 rue des Lilas, appartement 3, Bordeaux.",q:"ok",next:"s3",r:"Parfait, comptez 30 minutes. Comment vous payez ?"},
+        {text:"Bordeaux.",q:"bad",next:"s2b2",r:"Bordeaux c'est grand ! Quelle rue et quel numéro ?",tip:"Il faut donner le numéro, la rue, et la ville."},
+        {text:"12 rue des Lilas à Bordeaux, appartement 3 au 2ème étage.",q:"ok",next:"s3",r:"Très bien noté ! 30 minutes. Vous payez comment ?"},
+      ]},
+    s2b2:{other:"Quelle rue et quel numéro ?",
+      choices:[
+        {text:"Rue des Lilas.",q:"warn",next:"s2b3",r:"Et le numéro ?",tip:"Le numéro de rue est essentiel."},
+        {text:"12 rue des Lilas, appartement 3, Bordeaux.",q:"ok",next:"s3",r:"Parfait ! 30 minutes. Comment vous payez ?"},
+        {text:"Je vous envoie un SMS.",q:"bad",next:"s2b3",r:"On ne reçoit pas de SMS. Votre adresse s'il vous plaît ?",tip:"Ne propose pas d'envoyer un SMS, donne l'adresse directement."},
+        {text:"12 rue des Lilas à Bordeaux.",q:"ok",next:"s2b4",r:"Et l'appartement ou l'étage ?"},
+      ]},
+    s2b3:{other:"Votre adresse complète s'il vous plaît ?",
+      choices:[
+        {text:"12 rue des Lilas, appartement 3, Bordeaux.",q:"ok",next:"s3",r:"Merci ! 30 minutes. Vous payez comment ?"},
+        {text:"(Tu donnes l'adresse correctement)",q:"ok",next:"s3",r:"Parfait ! Comptez 30 minutes."},
+        {text:"Je sais plus mon adresse.",q:"bad",next:"end_bad",r:"",tip:"Il faut connaître son adresse pour commander une livraison."},
+        {text:"C'est au 12 rue des Lilas 3ème étage Bordeaux.",q:"ok",next:"s3",r:"Noté ! 30 minutes."},
+      ]},
+    s2b4:{other:"Et l'appartement ou l'étage ?",
+      choices:[
+        {text:"Appartement 3, 2ème étage.",q:"ok",next:"s3",r:"Parfait ! 30 minutes. Comment vous payez ?"},
+        {text:"Rez-de-chaussée.",q:"ok",next:"s3",r:"Noté ! Comment vous payez ?"},
+        {text:"Je sais pas.",q:"bad",next:"s3",r:"D'accord, le livreur sonnera. Comment vous payez ?",tip:"Essaie de connaître ton numéro d'appartement."},
+        {text:"3ème porte à gauche.",q:"warn",next:"s3",r:"Hmm d'accord… je note. Comment vous payez ?",tip:"Donne le numéro d'appartement, pas des indications vagues."},
+      ]},
+    s2c:{other:"Margherita ou 4 fromages ?",
+      choices:[
+        {text:"Margherita s'il vous plaît, grande taille.",q:"ok",next:"s2b",r:"Parfait ! Votre adresse ?"},
+        {text:"Les deux.",q:"bad",next:"s2c2",r:"Deux pizzas donc ? Ça fait 20€. Votre adresse ?",tip:"Sois sûr de ta commande avant de répondre."},
+        {text:"4 fromages grande.",q:"ok",next:"s2b",r:"D'accord ! Votre adresse ?"},
+        {text:"Celle avec le plus de fromage.",q:"warn",next:"s2c3",r:"4 fromages alors. Grande ou petite ?",tip:"Donne le nom exact."},
+      ]},
+    s2c2:{other:"Deux pizzas c'est bien ça ?",
+      choices:[
+        {text:"Non pardon, une seule, une Margherita grande.",q:"ok",next:"s2b",r:"Pas de souci ! Adresse ?"},
+        {text:"Oui les deux.",q:"warn",next:"s2b",r:"D'accord. Votre adresse ?",tip:"Vérifie bien ta commande avant de confirmer."},
+        {text:"Je sais plus ce que je veux.",q:"bad",next:"s2",r:"Je vous laisse choisir et rappeler ?",tip:"Décide avant d'appeler."},
+        {text:"Oui non… juste une Margherita.",q:"warn",next:"s2b",r:"D'accord ! Adresse ?",tip:""},
+      ]},
+    s2c3:{other:"Grande ou petite ?",
+      choices:[
+        {text:"Grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+        {text:"Je sais pas.",q:"bad",next:"s2b",r:"Je vous mets une grande alors. Adresse ?",tip:"Choisis ta taille avant d'appeler."},
+        {text:"Grande.",q:"ok",next:"s2b",r:"Très bien ! Adresse ?"},
+        {text:"La moins chère.",q:"warn",next:"s2b",r:"La petite est moins chère. Adresse ?",tip:"Dis grande ou petite, pas 'la moins chère'."},
+      ]},
+    s2d:{other:"Margherita, 4 fromages, Reine ou Chorizo ?",
+      choices:[
+        {text:"Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+        {text:"La première.",q:"bad",next:"s2b",r:"La Margherita alors. Adresse ?",tip:"Dis le nom de la pizza, pas 'la première'."},
+        {text:"Reine grande.",q:"ok",next:"s2b",r:"Très bien ! Adresse ?"},
+        {text:"Euh… Margherita je pense.",q:"warn",next:"s2b2b",r:"Vous êtes sûr ?",tip:"Décide clairement avant de répondre."},
+      ]},
+    s2b2b:{other:"Vous êtes sûr pour la Margherita ?",
+      choices:[
+        {text:"Oui, Margherita grande, j'en suis sûr.",q:"ok",next:"s2b",r:"Parfait ! Adresse ?"},
+        {text:"En fait non, 4 fromages.",q:"ok",next:"s2b",r:"D'accord ! Adresse ?"},
+        {text:"Peut-être, ouais.",q:"bad",next:"s2b",r:"Je mets Margherita. Adresse ?",tip:"Sois ferme dans tes choix."},
+        {text:"Oui Margherita.",q:"ok",next:"s2b",r:"Noté ! Adresse ?"},
+      ]},
+    s3:{other:"Vous payez comment ?",
+      choices:[
+        {text:"La carte de mon frère.",q:"bad",next:"s3b",r:"Il faut payer avec votre propre carte. Espèces ou votre carte ?",tip:"On ne paie pas avec la carte de quelqu'un d'autre sans permission."},
+        {text:"Par carte bancaire.",q:"ok",next:"end",r:"Parfait, le livreur aura un terminal. À tout à l'heure !"},
+        {text:"Je sais pas encore.",q:"warn",next:"s3c",r:"On accepte espèces ou carte. Vous préférez quoi ?",tip:"Décide du mode de paiement avant de commander."},
+        {text:"En espèces, j'aurai l'appoint.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+      ]},
+    s3b:{other:"Votre propre carte ou espèces ?",
+      choices:[
+        {text:"En espèces s'il vous plaît.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+        {text:"Ma carte à moi alors.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+        {text:"J'ai pas d'argent.",q:"bad",next:"end_bad",r:"",tip:"Il faut s'assurer d'avoir de l'argent avant de commander."},
+        {text:"Par carte.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+      ]},
+    s3c:{other:"Espèces ou carte, vous préférez quoi ?",
+      choices:[
+        {text:"Espèces.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+        {text:"Carte.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+        {text:"Les deux.",q:"bad",next:"s3c2",r:"Il faut choisir un seul mode de paiement.",tip:"Choisis un seul mode de paiement."},
+        {text:"Peu importe.",q:"warn",next:"s3c2",r:"Espèces alors. À tout à l'heure !",tip:"Dis clairement comment tu veux payer."},
+      ]},
+    s3c2:{other:"Espèces ou carte, un seul.",
+      choices:[
+        {text:"Espèces.",q:"ok",next:"end",r:"Très bien ! À tout à l'heure !"},
+        {text:"Carte.",q:"ok",next:"end",r:"Parfait ! À tout à l'heure !"},
+        {text:"Je sais pas.",q:"bad",next:"end",r:"Je mets espèces. À tout à l'heure !",tip:"Il faut savoir comment on va payer."},
+        {text:"Espèces s'il vous plaît.",q:"ok",next:"end",r:"Noté ! À tout à l'heure !"},
+      ]},
+    end:{other:"Parfait ! 30 minutes, bonne soirée !",
+      choices:[
+        {text:"Super, merci bonne soirée !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un simple 'ok' c'est un peu sec. Un merci et bonne soirée c'est mieux."},
+        {text:"(Tu raccroches sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours dire au revoir avant de raccrocher."},
+        {text:"Merci beaucoup, à tout à l'heure !",q:"ok",next:null,r:""},
+      ]},
+    end_bad:{other:"Je vous rappelle quand vous êtes prêt.",
+      choices:[
+        {text:"Ok merci.",q:"warn",next:null,r:"",tip:"La conversation n'a pas abouti. Prépare ta commande avant d'appeler."},
+        {text:"Non attendez ! Je veux une Margherita grande.",q:"ok",next:"s2b",r:"Très bien ! Adresse ?"},
+        {text:"(Tu raccroches)",q:"bad",next:null,r:"",tip:"La conversation s'est mal terminée sans commande passée."},
+        {text:"Pardon, je me reprends. Une Margherita grande s'il vous plaît.",q:"ok",next:"s2b",r:"Pas de problème ! Adresse ?"},
+      ]},
+  }
+},
+{
+  id:"pharmacie",icon:"💊",name:"À la pharmacie",who:"Pharmacien(ne)",ctx:"Tu demandes un médicament",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonjour ! Je peux vous aider ?",
+      choices:[
+        {text:"Ouais j'ai mal.",q:"bad",next:"s1b",r:"Mal où ?",tip:"Sois plus précis et poli. Dis bonjour et explique clairement ton problème."},
+        {text:"Bonjour ! Oui, j'ai une ordonnance de mon médecin.",q:"ok",next:"s2",r:"Très bien, je peux la voir ?"},
+        {text:"Bonjour, j'ai mal à la tête depuis hier soir, j'ai de la fièvre.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments en ce moment ?"},
+        {text:"Bonjour, vous avez du Doliprane ?",q:"warn",next:"s2c",r:"Oui on en a. C'est pour quel motif ?",tip:"Mieux vaut d'abord expliquer ton problème plutôt que de demander un médicament précis sans contexte."},
+      ]},
+    s1b:{other:"Vous avez mal où ?",
+      choices:[
+        {text:"À la tête, depuis hier, avec de la fièvre.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"Partout.",q:"bad",next:"s1c",r:"Je n'ai pas bien compris. Pouvez-vous décrire votre douleur ?",tip:"Sois précis sur l'endroit où tu as mal."},
+        {text:"Bonjour pardon. J'ai mal à la tête et de la fièvre depuis hier.",q:"ok",next:"s2b",r:"D'accord. Vous prenez autres choses en ce moment ?"},
+        {text:"À la tête.",q:"ok",next:"s2d",r:"Depuis combien de temps ?"},
+      ]},
+    s1c:{other:"Décrivez votre douleur.",
+      choices:[
+        {text:"J'ai mal à la tête depuis hier et j'ai 38.5 de fièvre.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"C'est douloureux.",q:"bad",next:"s2b",r:"Je vais vous donner du paracétamol.",tip:"'C'est douloureux' n'explique rien. Dis où et depuis quand."},
+        {text:"Tête et gorge depuis 2 jours.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"Mal de tête intense depuis hier soir.",q:"ok",next:"s2d",r:"Vous avez de la fièvre ?"},
+      ]},
+    s2:{other:"Je peux voir l'ordonnance ?",
+      choices:[
+        {text:"Oui voilà, c'est le docteur Martin qui me l'a donnée.",q:"ok",next:"s3",r:"Merci. Vous avez des allergies connues ?"},
+        {text:"Je l'ai oubliée.",q:"bad",next:"s2e",r:"Sans ordonnance je ne peux pas vous délivrer ces médicaments. Il faudra revenir.",tip:"Toujours vérifier qu'on a son ordonnance avant d'aller à la pharmacie."},
+        {text:"La voilà.",q:"ok",next:"s3",r:"Merci. Vous avez des allergies ?"},
+        {text:"Attendez je cherche…",q:"warn",next:"s2f",r:"Prenez votre temps.",tip:"Il vaut mieux avoir ses documents prêts avant de passer au comptoir."},
+      ]},
+    s2b:{other:"Vous prenez d'autres médicaments en ce moment ?",
+      choices:[
+        {text:"Non, rien du tout.",q:"ok",next:"s3b",r:"Bien. Je vous conseille du paracétamol, 1g toutes les 6h max. Pas plus de 4 par jour."},
+        {text:"Je sais pas, des trucs.",q:"bad",next:"s2g",r:"C'est important de le savoir. Vous pouvez vérifier dans votre sac ?",tip:"Il faut connaître les médicaments qu'on prend, c'est important pour la sécurité."},
+        {text:"Oui, je prends un médicament pour la tension.",q:"ok",next:"s3c",r:"Important ! Le nom du médicament ?"},
+        {text:"Seulement de la vitamine C.",q:"ok",next:"s3b",r:"D'accord, c'est compatible. Paracétamol 1g toutes les 6h."},
+      ]},
+    s2c:{other:"C'est pour quel motif ?",
+      choices:[
+        {text:"J'ai mal à la tête et de la fièvre depuis hier.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+        {text:"Pour me soigner.",q:"bad",next:"s1c",r:"Je comprends, mais soigner quoi exactement ?",tip:"Explique ton symptôme précis."},
+        {text:"Mal de tête avec 38 de fièvre.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments en cours ?"},
+        {text:"J'ai vu sur internet que c'est bon pour moi.",q:"bad",next:"s2c2",r:"Je préfère que vous me décriviez vos symptômes plutôt que de vous fier à internet.",tip:"Ne te base pas sur internet pour choisir tes médicaments. Décris tes symptômes."},
+      ]},
+    s2c2:{other:"Décrivez vos symptômes s'il vous plaît.",
+      choices:[
+        {text:"Mal de tête depuis hier, 38.5 de fièvre.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+        {text:"C'est internet qui dit que j'ai besoin de Doliprane.",q:"bad",next:"s3b",r:"Je vous donne du paracétamol mais suivez mes conseils, pas internet.",tip:"Fais confiance au pharmacien, pas aux sites internet."},
+        {text:"Tête et gorge, fièvre depuis 2 jours.",q:"ok",next:"s2b",r:"Depuis 2 jours ? Si ça ne s'améliore pas consultez un médecin."},
+        {text:"Pardon, j'ai mal à la tête et de la fièvre.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+      ]},
+    s2d:{other:"Depuis combien de temps ?",
+      choices:[
+        {text:"Depuis hier soir, j'ai aussi 38.5.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+        {text:"Longtemps.",q:"warn",next:"s2d2",r:"Des heures ? Des jours ?",tip:"Donne une durée précise."},
+        {text:"Je sais pas exactement.",q:"warn",next:"s2b",r:"D'accord. Autres médicaments en cours ?",tip:"Essaie de te souvenir depuis quand tu as mal."},
+        {text:"Depuis hier matin.",q:"ok",next:"s2b",r:"D'accord. Vous prenez d'autres médicaments ?"},
+      ]},
+    s2d2:{other:"Des heures ou des jours ?",
+      choices:[
+        {text:"Depuis hier, donc environ 24h.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+        {text:"Je sais vraiment pas.",q:"bad",next:"s2b",r:"D'accord, je vous donne du paracétamol.",tip:"Essaie de savoir depuis quand tu te sens mal, c'est important."},
+        {text:"Depuis hier soir.",q:"ok",next:"s2b",r:"Bien. Autres médicaments ?"},
+        {text:"Quelques heures.",q:"ok",next:"s2b",r:"D'accord. Autres médicaments ?"},
+      ]},
+    s2e:{other:"Revenez avec votre ordonnance.",
+      choices:[
+        {text:"D'accord, je reviendrai. Merci quand même.",q:"ok",next:null,r:"",tip:""},
+        {text:"Mais j'en ai besoin maintenant !",q:"bad",next:"s2e2",r:"Je comprends mais sans ordonnance c'est impossible pour ces médicaments.",tip:"Sans ordonnance, impossible d'avoir certains médicaments. Il faut l'apporter."},
+        {text:"Ok merci.",q:"warn",next:null,r:"",tip:"Un simple 'ok' c'est sec. 'Merci quand même' c'est plus poli."},
+        {text:"Je comprends, je reviens demain avec l'ordonnance.",q:"ok",next:null,r:""},
+      ]},
+    s2e2:{other:"Sans ordonnance c'est impossible.",
+      choices:[
+        {text:"D'accord, je comprends. Merci.",q:"ok",next:null,r:""},
+        {text:"C'est nul.",q:"bad",next:null,r:"",tip:"Le pharmacien respecte la loi. Ne t'énerve pas contre lui."},
+        {text:"Je peux appeler mon médecin pour qu'il vous envoie l'ordonnance ?",q:"ok",next:null,r:"Oui bonne idée, certains médecins peuvent envoyer une ordonnance électronique."},
+        {text:"Vous pouvez pas faire une exception ?",q:"warn",next:null,r:"Non, désolé, c'est la réglementation.",tip:"Le pharmacien ne peut pas faire d'exception pour une ordonnance."},
+      ]},
+    s2f:{other:"Prenez votre temps.",
+      choices:[
+        {text:"La voilà, pardon pour le délai.",q:"ok",next:"s3",r:"Pas de souci ! Vous avez des allergies ?"},
+        {text:"Je l'ai pas avec moi…",q:"bad",next:"s2e",r:"Sans ordonnance je ne peux pas vous délivrer ces médicaments.",tip:"Toujours vérifier qu'on a son ordonnance avant de venir."},
+        {text:"La voilà.",q:"ok",next:"s3",r:"Merci. Des allergies ?"},
+        {text:"Euh attendez… voilà.",q:"warn",next:"s3",r:"Merci. Des allergies ?",tip:""},
+      ]},
+    s2g:{other:"Vérifiez dans votre sac.",
+      choices:[
+        {text:"J'ai du Bisoprolol pour le cœur.",q:"ok",next:"s3c",r:"Merci, c'est important. Le paracétamol est compatible."},
+        {text:"Je sais toujours pas.",q:"bad",next:"s3b",r:"D'accord, prenez le paracétamol avec prudence.",tip:"Il est très important de connaître les médicaments qu'on prend."},
+        {text:"Non je prends rien d'autre.",q:"ok",next:"s3b",r:"Parfait. Paracétamol 1g toutes les 6h."},
+        {text:"J'ai des médicaments dans mon sac mais je sais pas les noms.",q:"warn",next:"s3b",r:"Montrez-les moi si vous voulez. Paracétamol pour l'instant.",tip:"Note le nom de tes médicaments ou garde les boîtes."},
+      ]},
+    s3:{other:"Vous avez des allergies connues ?",
+      choices:[
+        {text:"Oui je suis allergique aux pénicillines.",q:"ok",next:"s3d",r:"Merci de me le dire ! Je vérifie que l'ordonnance ne contient pas de pénicilline."},
+        {text:"Non aucune à ma connaissance.",q:"ok",next:"s4",r:"Parfait. Je prépare vos médicaments et je vous explique comment les prendre."},
+        {text:"Je sais pas.",q:"warn",next:"s3e",r:"Demandez à votre famille ou à votre médecin. Pour l'instant il n'y a pas de risque.",tip:"Il est important de connaître ses allergies."},
+        {text:"Des allergies à quoi ?",q:"warn",next:"s3e2",r:"Aux médicaments, au latex, à certains aliments ?",tip:"Il faut connaître ses allergies, c'est très important pour la santé."},
+      ]},
+    s3b:{other:"Paracétamol 1g toutes les 6h, max 4 par jour.",
+      choices:[
+        {text:"D'accord. Et si j'ai pas de fièvre après 2 jours ?",q:"ok",next:"s4b",r:"Consultez votre médecin si pas d'amélioration en 48h."},
+        {text:"Je peux en prendre plus si c'est urgent ?",q:"bad",next:"s3f",r:"Non ! Ne dépassez jamais la dose. C'est dangereux.",tip:"Ne jamais dépasser la dose prescrite, c'est très dangereux."},
+        {text:"Compris. Je peux l'avoir sans ordonnance ?",q:"ok",next:"s4c",r:"Le paracétamol ne nécessite pas d'ordonnance, vous pouvez l'acheter directement."},
+        {text:"Ok.",q:"warn",next:"s4",r:"N'hésitez pas à revenir si ça ne va pas mieux.",tip:"Écoute bien les instructions et pose des questions si tu n'as pas compris."},
+      ]},
+    s3c:{other:"Le paracétamol est compatible avec votre traitement.",
+      choices:[
+        {text:"Merci de vérifier, c'est rassurant.",q:"ok",next:"s4",r:"C'est mon rôle ! Je vous explique la posologie."},
+        {text:"C'est quoi compatible ?",q:"ok",next:"s3c2",r:"Ça veut dire que les deux médicaments peuvent se prendre ensemble sans danger."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Je vous explique comment le prendre.",tip:""},
+        {text:"Je fais confiance.",q:"ok",next:"s4",r:"Parfait. Voici comment prendre le paracétamol."},
+      ]},
+    s3c2:{other:"Compatible = les deux médicaments peuvent se prendre ensemble.",
+      choices:[
+        {text:"Ah d'accord, merci pour l'explication !",q:"ok",next:"s4",r:"De rien. Voici la posologie."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici comment le prendre.",tip:""},
+        {text:"Super, merci.",q:"ok",next:"s4",r:"Je vous explique la posologie."},
+        {text:"C'est bon à savoir merci.",q:"ok",next:"s4",r:"Voici les instructions."},
+      ]},
+    s3d:{other:"Je vérifie — pas de pénicilline, vous pouvez prendre ce traitement.",
+      choices:[
+        {text:"Merci beaucoup, c'est important pour moi.",q:"ok",next:"s4",r:"Bien sûr ! Je vous explique comment prendre les médicaments."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici les instructions.",tip:""},
+        {text:"Super.",q:"warn",next:"s4",r:"Voici comment les prendre.",tip:""},
+        {text:"Merci de vérifier.",q:"ok",next:"s4",r:"C'est mon rôle. Voici les instructions."},
+      ]},
+    s3e:{other:"Demandez à votre famille ou médecin.",
+      choices:[
+        {text:"D'accord, je vais demander. Merci.",q:"ok",next:"s4",r:"Bien. Voici vos médicaments."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici les médicaments.",tip:""},
+        {text:"Bah je sais pas.",q:"bad",next:"s4",r:"Essayez de vous renseigner, c'est important.",tip:"Connais tes allergies, note-les quelque part."},
+        {text:"Je vais essayer de me souvenir.",q:"ok",next:"s4",r:"D'accord. Voici vos médicaments."},
+      ]},
+    s3e2:{other:"Allergies aux médicaments, latex ou aliments ?",
+      choices:[
+        {text:"Aux pénicillines.",q:"ok",next:"s3d",r:"Merci. Je vérifie l'ordonnance."},
+        {text:"Je sais pas vraiment.",q:"warn",next:"s4",r:"D'accord, pas de risque avec ce traitement.",tip:"Essaie de te souvenir de tes allergies."},
+        {text:"Aux poils de chat !",q:"warn",next:"s4",r:"Je pensais aux médicaments, mais merci. Pas de risque ici.",tip:"Les allergies médicamenteuses sont les plus importantes à mentionner à la pharmacie."},
+        {text:"Aucune que je sache.",q:"ok",next:"s4",r:"Parfait. Voici vos médicaments."},
+      ]},
+    s3f:{other:"Ne dépassez JAMAIS la dose, c'est dangereux.",
+      choices:[
+        {text:"D'accord, je comprends, je respecterai la dose.",q:"ok",next:"s4",r:"Très bien. Voici vos médicaments."},
+        {text:"Ok mais si j'ai très mal ?",q:"warn",next:"s3f2",r:"Même en cas de forte douleur. Sinon consultez un médecin.",tip:"Jamais dépasser la dose, quelle que soit la douleur."},
+        {text:"Compris.",q:"ok",next:"s4",r:"Bien. Voici les médicaments."},
+        {text:"Oui pardon.",q:"ok",next:"s4",r:"Voici les médicaments."},
+      ]},
+    s3f2:{other:"Même si très mal — consultez un médecin si besoin.",
+      choices:[
+        {text:"D'accord, compris. Merci.",q:"ok",next:"s4",r:"Voici vos médicaments."},
+        {text:"Ok.",q:"warn",next:"s4",r:"Voici les médicaments.",tip:""},
+        {text:"Je comprends.",q:"ok",next:"s4",r:"Voici les médicaments."},
+        {text:"Bon d'accord.",q:"warn",next:"s4",r:"Voici.",tip:""},
+      ]},
+    s4:{other:"Prenez 1 comprimé matin, midi et soir avec de l'eau. 7 jours.",
+      choices:[
+        {text:"D'accord. Est-ce que je peux les prendre à l'estomac vide ?",q:"ok",next:"s4d",r:"Oui sans problème, mais de préférence après le repas si vous avez l'estomac fragile."},
+        {text:"Compris, merci beaucoup !",q:"ok",next:"end",r:"Bonne guérison ! Revenez si ça ne va pas mieux."},
+        {text:"Je peux en noter les instructions ?",q:"ok",next:"s4e",r:"Bien sûr ! Je peux aussi imprimer une notice."},
+        {text:"C'est bon j'ai compris.",q:"warn",next:"end",r:"Bonne guérison !",tip:"N'hésite pas à demander si tu n'es pas sûr d'avoir tout compris."},
+      ]},
+    s4b:{other:"Si pas d'amélioration en 48h, consultez votre médecin.",
+      choices:[
+        {text:"D'accord, je note. Merci beaucoup.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"Et le soir si j'ai mal ?",q:"ok",next:"s4f",r:"Vous pouvez prendre une dose le soir aussi, dans la limite de 4 par jour."},
+        {text:"Ok.",q:"warn",next:"end",r:"Bonne guérison !",tip:""},
+        {text:"Merci pour le conseil.",q:"ok",next:"end",r:"Bonne guérison !"},
+      ]},
+    s4c:{other:"Oui, le paracétamol est en vente libre.",
+      choices:[
+        {text:"Merci, je le savais pas.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"Super, merci pour tout.",q:"ok",next:"end",r:"Avec plaisir, bonne guérison !"},
+        {text:"Alors pourquoi vous me l'avez pas dit avant ?",q:"bad",next:"end",r:"Parce que vous me parliez d'ordonnance.",tip:"Ne sois pas agressif envers le pharmacien."},
+        {text:"Ok merci.",q:"ok",next:"end",r:"Bonne guérison !"},
+      ]},
+    s4d:{other:"Après repas si estomac fragile, sinon c'est libre.",
+      choices:[
+        {text:"Merci pour le conseil.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"D'accord, merci beaucoup.",q:"ok",next:"end",r:"Avec plaisir !"},
+        {text:"Super.",q:"warn",next:"end",r:"Bonne guérison !",tip:""},
+        {text:"Parfait, merci.",q:"ok",next:"end",r:"Bonne guérison !"},
+      ]},
+    s4e:{other:"Voilà la notice. N'hésitez pas à revenir.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Super merci.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci, bonne journée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"bad",next:null,r:"",tip:"Un simple 'ok' est très sec pour conclure une conversation."},
+      ]},
+    s4f:{other:"Oui, max 4 comprimés par jour en tout.",
+      choices:[
+        {text:"Compris, merci pour tout.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"Bonne guérison !",tip:""},
+        {text:"Merci.",q:"ok",next:"end",r:"Bonne guérison !"},
+        {text:"Et si j'en prends 5 ?",q:"bad",next:"s3f",r:"Non ! 4 maximum, c'est dangereux au-delà.",tip:"Ne jamais dépasser la dose recommandée."},
+      ]},
+    end:{other:"Bonne guérison ! N'hésitez pas à revenir.",
+      choices:[
+        {text:"Merci, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci beaucoup.",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"bad",next:null,r:"",tip:"'Ok' tout seul c'est très sec. Un 'merci' minimum."},
+        {text:"Merci, à bientôt.",q:"ok",next:null,r:""},
+      ]},
+  }
+},
+{
+  id:"transport",icon:"🚌",name:"Perdu dans les transports",who:"Agent / Passager",ctx:"Tu es perdu, tu demandes de l'aide",
+  start:"s1",
+  steps:{
+    s1:{other:"(Un agent passe devant toi)",
+      choices:[
+        {text:"(Tu restes sans rien dire en espérant qu'il t'aide)",q:"bad",next:"s1b",r:"(L'agent ne te remarque pas et continue)",tip:"Si tu as besoin d'aide, il faut oser demander. Personne ne peut deviner que tu es perdu."},
+        {text:"Hé ! Attendez !",q:"warn",next:"s1c",r:"Oui ? Je peux vous aider ?",tip:"'Hé' c'est un peu brusque. 'Excusez-moi' est plus poli et plus efficace."},
+        {text:"Excusez-moi, vous pouvez m'aider s'il vous plaît ?",q:"ok",next:"s2",r:"Bien sûr ! Qu'est-ce qui se passe ?"},
+        {text:"Excusez-moi monsieur/madame, je suis perdu(e), vous pouvez m'aider ?",q:"ok",next:"s2",r:"Pas de panique ! Je suis là. Vous allez où ?"},
+      ]},
+    s1b:{other:"(L'agent est passé, tu es toujours seul)",
+      choices:[
+        {text:"(Tu attends qu'un autre agent passe)",q:"warn",next:"s1b2",r:"(Un autre agent passe) Vous avez besoin d'aide ?",tip:"Attendre passivement n'est pas la meilleure solution. Il faut interpeller quelqu'un."},
+        {text:"Tu t'approches du guichet d'information.",q:"ok",next:"s1d",r:"Bonjour ! Je peux vous aider ?"},
+        {text:"Tu interpelles un passager.",q:"ok",next:"s1e",r:"Oui ? Qu'est-ce qui se passe ?"},
+        {text:"(Tu restes sans bouger, de plus en plus anxieux)",q:"bad",next:"s1b2",r:"(Une heure plus tard, un agent te remarque) Ça va ?",tip:"Ne reste pas bloqué. Il y a toujours quelqu'un pour aider."},
+      ]},
+    s1b2:{other:"Vous avez besoin d'aide ?",
+      choices:[
+        {text:"Oui merci ! Je suis perdu, je cherche la gare de Lyon.",q:"ok",next:"s3",r:"Pas de souci ! Vous êtes à Nation. Il faut prendre la ligne 1."},
+        {text:"Oui, je sais plus où aller.",q:"warn",next:"s2",r:"Où est-ce que vous voulez aller ?",tip:"Dis directement ta destination."},
+        {text:"Non ça va.",q:"bad",next:null,r:"",tip:"Si tu es perdu, accepte l'aide qu'on te propose !"},
+        {text:"Oui s'il vous plaît.",q:"ok",next:"s2",r:"Où allez-vous ?"},
+      ]},
+    s1c:{other:"Oui, je peux vous aider ?",
+      choices:[
+        {text:"Je suis perdu, je cherche la gare de Lyon.",q:"ok",next:"s3",r:"D'accord ! Vous êtes à Nation. Ligne 1 direction La Défense."},
+        {text:"Vous pouvez m'aider ? Je suis perdu(e).",q:"ok",next:"s2",r:"Bien sûr ! Vous allez où ?"},
+        {text:"Ouais j'suis perdu.",q:"warn",next:"s2",r:"Où est-ce que vous voulez aller ?",tip:"Sois un peu plus poli, même quand tu es stressé."},
+        {text:"Je comprends pas les panneaux.",q:"warn",next:"s2",r:"Pas de problème. Où voulez-vous aller ?",tip:"Explique d'abord ta destination."},
+      ]},
+    s1d:{other:"Bonjour ! Je peux vous aider ?",
+      choices:[
+        {text:"Bonjour ! Oui, je suis perdu(e). Je cherche la gare de Lyon.",q:"ok",next:"s3",r:"Pas de souci ! Vous êtes à Nation. Prenez la ligne 1."},
+        {text:"Bonjour, je comprends pas le plan.",q:"warn",next:"s2",r:"Où voulez-vous aller ?",tip:"Dis d'abord ta destination."},
+        {text:"Bonjour, j'ai pris le mauvais métro je crois.",q:"ok",next:"s2",r:"Où voulez-vous aller ?"},
+        {text:"Je suis perdu.",q:"warn",next:"s2",r:"Pas de panique ! Où allez-vous ?",tip:"Dis bonjour avant tout."},
+      ]},
+    s1e:{other:"(Le passager) Oui ? Qu'est-ce qui se passe ?",
+      choices:[
+        {text:"Excusez-moi, je cherche la gare de Lyon. Vous savez comment y aller ?",q:"ok",next:"s3",r:"Oui ! Prenez la ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Je suis perdu.",q:"warn",next:"s2",r:"Où voulez-vous aller ?",tip:"Dis directement ta destination."},
+        {text:"Vous connaissez la gare de Lyon ?",q:"ok",next:"s3",r:"Oui ! Ligne 1, 3 arrêts."},
+        {text:"C'est où ici ?",q:"warn",next:"s2b",r:"On est à Nation. Vous allez où ?",tip:"Dis d'abord où tu veux aller."},
+      ]},
+    s2:{other:"Où voulez-vous aller ?",
+      choices:[
+        {text:"Je cherche la gare de Lyon.",q:"ok",next:"s3",r:"Vous êtes à Nation. Prenez la ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Je sais pas trop.",q:"bad",next:"s2c",r:"Vous avez un billet ? Une réservation ?",tip:"Il faut savoir où on veut aller avant de prendre les transports."},
+        {text:"À la gare de Lyon, j'ai un train.",q:"ok",next:"s3",r:"D'accord. Vous êtes à Nation, ligne 1, 3 arrêts."},
+        {text:"Je voulais aller à la gare mais je suis perdu.",q:"ok",next:"s2d",r:"Quelle gare ?"},
+      ]},
+    s2b:{other:"On est à Nation. Vous allez où ?",
+      choices:[
+        {text:"À la gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Je sais pas.",q:"bad",next:"s2c",r:"Vous avez un billet ou une réservation ?",tip:"Savoir où on va, c'est la base !"},
+        {text:"Chez moi.",q:"warn",next:"s2c",r:"Et votre adresse ?",tip:"Donne une destination précise dans les transports en commun."},
+        {text:"Gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1, La Défense, 3 arrêts."},
+      ]},
+    s2c:{other:"Vous avez un billet ou une réservation ?",
+      choices:[
+        {text:"Oui, j'ai ce billet.",q:"ok",next:"s3b",r:"Je vois, vous allez à la gare de Lyon. Vous êtes dans le mauvais sens !"},
+        {text:"Non, je voulais juste rentrer chez moi.",q:"warn",next:"s2e",r:"Votre adresse ?",tip:"Dans les transports, il faut avoir un titre de transport."},
+        {text:"Je sais pas si j'en ai un.",q:"bad",next:"s2f",r:"Regardez dans votre poche ou votre sac.",tip:"Il faut toujours avoir son titre de transport sur soi."},
+        {text:"Oui voilà.",q:"ok",next:"s3b",r:"Je vois, vous allez gare de Lyon. Vous êtes dans le mauvais sens !"},
+      ]},
+    s2d:{other:"Quelle gare ?",
+      choices:[
+        {text:"La gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1 direction La Défense, 3 arrêts."},
+        {text:"Celle où partent les TGV.",q:"warn",next:"s3",r:"Gare de Lyon alors. Ligne 1, 3 arrêts.",tip:"Donne le nom exact de la gare."},
+        {text:"Je sais pas le nom.",q:"bad",next:"s2c",r:"Vous avez un billet ?",tip:"Connais toujours ta destination avant de prendre les transports."},
+        {text:"Gare de Lyon.",q:"ok",next:"s3",r:"Ligne 1, La Défense, 3 arrêts."},
+      ]},
+    s2e:{other:"Votre adresse ?",
+      choices:[
+        {text:"12 rue des Fleurs à Paris.",q:"ok",next:"s3c",r:"D'accord. Vous devez prendre le bus 91."},
+        {text:"Je sais plus.",q:"bad",next:"s3d",r:"Vous avez votre adresse sur un papier ou votre téléphone ?",tip:"Il faut toujours avoir son adresse notée quelque part."},
+        {text:"Près du parc.",q:"bad",next:"s2e2",r:"Je n'ai pas compris, il me faut l'adresse exacte.",tip:"Donne une adresse précise : numéro, rue, ville."},
+        {text:"14 avenue de la Paix.",q:"ok",next:"s3c",r:"D'accord, prenez le bus 73."},
+      ]},
+    s2e2:{other:"L'adresse exacte s'il vous plaît.",
+      choices:[
+        {text:"12 rue des Fleurs à Paris.",q:"ok",next:"s3c",r:"Prenez le bus 91."},
+        {text:"Je me souviens plus exactement.",q:"bad",next:"s3d",r:"Regardez dans votre téléphone.",tip:"Avoir son adresse dans son téléphone est très utile."},
+        {text:"C'est dans le 15ème.",q:"warn",next:"s2e3",r:"Quelle rue ?",tip:"Donne le numéro et le nom de la rue."},
+        {text:"14 avenue de la Paix, 15ème.",q:"ok",next:"s3c",r:"Prenez le bus 73."},
+      ]},
+    s2e3:{other:"Quelle rue ?",
+      choices:[
+        {text:"Rue des Fleurs, numéro 12.",q:"ok",next:"s3c",r:"Bus 91."},
+        {text:"Je me souviens pas.",q:"bad",next:"s3d",r:"Regardez dans votre téléphone.",tip:"Note toujours ton adresse quelque part."},
+        {text:"Je crois que c'est rue de la Paix.",q:"warn",next:"s3c",r:"D'accord, bus 73 ou 92.",tip:"Connais ta propre adresse."},
+        {text:"Rue de la Liberté numéro 5.",q:"ok",next:"s3c",r:"D'accord, bus 72."},
+      ]},
+    s2f:{other:"Regardez dans votre sac ou vos poches.",
+      choices:[
+        {text:"Voilà, j'ai ce ticket.",q:"ok",next:"s3b",r:"Vous allez gare de Lyon. Vous êtes dans le mauvais sens !"},
+        {text:"J'ai rien.",q:"bad",next:"s3e",r:"Sans titre de transport vous êtes en infraction. Il faut en acheter un.",tip:"Toujours avoir son titre de transport."},
+        {text:"J'ai une carte Navigo.",q:"ok",next:"s3",r:"Parfait. Vous êtes à Nation, ligne 1, 3 arrêts."},
+        {text:"J'ai pas de ticket.",q:"warn",next:"s3e",r:"Il faut acheter un ticket. Le guichet est là-bas.",tip:"On ne prend pas les transports sans payer."},
+      ]},
+    s3:{other:"Ligne 1 direction La Défense, 3 arrêts — descendez à Gare de Lyon.",
+      choices:[
+        {text:"Merci ! Et c'est quel quai ?",q:"ok",next:"s4",r:"Quai B, là à gauche. Vous voyez le panneau bleu ?"},
+        {text:"Vous pouvez répéter s'il vous plaît ?",q:"ok",next:"s3r",r:"Ligne 1, direction La Défense. Descendez dans 3 arrêts à Gare de Lyon."},
+        {text:"D'accord, merci.",q:"warn",next:"s4",r:"Le quai B est là à gauche, panneau bleu.",tip:"N'hésite pas à demander où est le quai."},
+        {text:"Ligne 1 La Défense 3 arrêts, j'ai compris. Merci !",q:"ok",next:"s4b",r:"Parfait ! Bon voyage !"},
+      ]},
+    s3b:{other:"Vous êtes dans le mauvais sens ! Descendez au prochain arrêt.",
+      choices:[
+        {text:"Ah ! Merci beaucoup. Et ensuite je fais quoi ?",q:"ok",next:"s3b2",r:"Descendez, traversez, reprenez la ligne 1 dans l'autre sens jusqu'à Gare de Lyon."},
+        {text:"Quoi ?! C'est grave ?",q:"warn",next:"s3b2",r:"Non, pas de panique ! Descendez juste au prochain arrêt et revenez en arrière.",tip:"Pas de panique quand on se trompe, ça arrive."},
+        {text:"Oh non…",q:"warn",next:"s3b2",r:"Pas de souci ! Descendez au prochain arrêt.",tip:"Reste calme, il existe toujours une solution."},
+        {text:"D'accord ! Je descends et je prends l'autre sens.",q:"ok",next:"end",r:"Exactement ! Bon voyage !"},
+      ]},
+    s3b2:{other:"Descendez, traversez, reprenez ligne 1 vers Gare de Lyon.",
+      choices:[
+        {text:"Compris, merci beaucoup !",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Vous pouvez répéter ?",q:"ok",next:"s3b3",r:"Descendez au prochain arrêt. Traversez le quai. Reprenez ligne 1 dans l'autre sens."},
+        {text:"D'accord.",q:"warn",next:"end",r:"Bon voyage !",tip:""},
+        {text:"Merci pour votre aide !",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+      ]},
+    s3b3:{other:"Descendez, traversez, ligne 1 autre sens.",
+      choices:[
+        {text:"Merci, j'ai compris.",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Vous pouvez venir avec moi ?",q:"warn",next:"s3b4",r:"Je ne peux pas vous accompagner, mais vous allez y arriver !",tip:"L'agent a d'autres personnes à aider. Essaie de mémoriser les instructions."},
+        {text:"Ok merci.",q:"ok",next:"end",r:"De rien !"},
+        {text:"D'accord, je note.",q:"ok",next:"end",r:"Bonne idée ! Bon voyage !"},
+      ]},
+    s3b4:{other:"Vous allez y arriver ! Descendez, traversez, autre sens.",
+      choices:[
+        {text:"D'accord, merci pour votre patience.",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+        {text:"Ok.",q:"warn",next:"end",r:"Bon voyage !",tip:""},
+        {text:"Merci, j'essaie.",q:"ok",next:"end",r:"Vous allez y arriver !"},
+        {text:"Merci beaucoup.",q:"ok",next:"end",r:"Bonne continuation !"},
+      ]},
+    s3c:{other:"Prenez le bus indiqué, direction centre.",
+      choices:[
+        {text:"Merci ! Le bus s'arrête où exactement ?",q:"ok",next:"s4c",r:"L'arrêt est à 50 mètres, sortez par là-bas."},
+        {text:"Merci.",q:"warn",next:"end",r:"Bonne continuation !",tip:""},
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"Bon courage !",tip:""},
+      ]},
+    s3d:{other:"Regardez dans votre téléphone votre adresse.",
+      choices:[
+        {text:"Ah oui, c'est le 12 rue des Fleurs.",q:"ok",next:"s3c",r:"Bus 91 ou 92."},
+        {text:"Mon téléphone est mort.",q:"warn",next:"s3d2",r:"Vous avez quelqu'un à appeler qui peut vous aider ?",tip:"Penser à charger son téléphone avant de sortir."},
+        {text:"J'ai pas de téléphone.",q:"warn",next:"s3d2",r:"Vous avez un papier avec votre adresse ?",tip:"Toujours avoir son adresse notée quelque part."},
+        {text:"Voilà, 14 avenue de la Paix.",q:"ok",next:"s3c",r:"Bus 73."},
+      ]},
+    s3d2:{other:"Quelqu'un peut vous aider par téléphone ou un papier ?",
+      choices:[
+        {text:"J'ai un papier dans mon sac avec mon adresse.",q:"ok",next:"s3c",r:"Parfait ! Bus 91."},
+        {text:"Je peux appeler mon éducateur.",q:"ok",next:"s4d",r:"Bonne idée ! Appelez-le, il pourra vous guider."},
+        {text:"J'ai personne.",q:"bad",next:"s3d3",r:"D'accord, je vais vous accompagner au guichet.",tip:"Il est important d'avoir au moins un numéro d'urgence."},
+        {text:"Ma famille peut me guider.",q:"ok",next:"s4d",r:"Appelez-les, c'est la meilleure solution."},
+      ]},
+    s3d3:{other:"Je vous accompagne au guichet pour vous aider.",
+      choices:[
+        {text:"Merci beaucoup, c'est très gentil !",q:"ok",next:"end",r:"De rien, c'est normal d'aider !"},
+        {text:"Merci.",q:"ok",next:"end",r:"Bonne continuation !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"Allez, on y va !",tip:""},
+        {text:"Ok merci.",q:"ok",next:"end",r:"Pas de souci !"},
+      ]},
+    s3e:{other:"Il faut acheter un ticket. Le guichet est là-bas.",
+      choices:[
+        {text:"D'accord, merci, je vais en acheter un.",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Ça coûte combien ?",q:"ok",next:"s3e2",r:"2,15€ le ticket unitaire ou vous pouvez prendre un carnet."},
+        {text:"Je peux pas payer.",q:"bad",next:"end",r:"Il faudra trouver une solution. Bon courage.",tip:"Il faut toujours prévoir l'argent du transport."},
+        {text:"J'avais pas de ticket, j'allais en acheter un.",q:"warn",next:"end",r:"D'accord, le guichet est là.",tip:"Il faut acheter le ticket avant de monter dans les transports."},
+      ]},
+    s3e2:{other:"2,15€ le ticket ou 16,90€ le carnet de 10.",
+      choices:[
+        {text:"Je prends un ticket unitaire s'il vous plaît.",q:"ok",next:"end",r:"Le guichet est là. Bonne journée !"},
+        {text:"Un carnet, c'est plus économique.",q:"ok",next:"end",r:"Très bien ! Le guichet est là."},
+        {text:"Je peux pas payer.",q:"bad",next:"end",r:"Il faudra trouver une solution, désolé.",tip:"Il faut toujours avoir de l'argent pour les transports."},
+        {text:"Merci pour l'info.",q:"ok",next:"end",r:"Le guichet est là-bas."},
+      ]},
+    s3r:{other:"Ligne 1, direction La Défense, descendez dans 3 arrêts.",
+      choices:[
+        {text:"Compris ! Et c'est quel quai ?",q:"ok",next:"s4",r:"Quai B, là à gauche."},
+        {text:"Merci, j'ai noté.",q:"ok",next:"s4b",r:"Bon voyage !"},
+        {text:"Vous pouvez encore répéter ?",q:"warn",next:"s3r2",r:"Ligne 1, 3 arrêts, Gare de Lyon.",tip:"N'hésite pas à répéter pour mémoriser."},
+        {text:"Ok merci.",q:"warn",next:"s4",r:"Quai B à gauche.",tip:""},
+      ]},
+    s3r2:{other:"Ligne 1, 3 arrêts, Gare de Lyon.",
+      choices:[
+        {text:"Merci ! Quai B à gauche alors ?",q:"ok",next:"end",r:"Exactement ! Bon voyage !"},
+        {text:"Je note : ligne 1, 3 arrêts.",q:"ok",next:"end",r:"Parfait ! Bon voyage !"},
+        {text:"D'accord merci.",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Encore une fois ?",q:"bad",next:"end",r:"Ligne 1, 3 arrêts, Gare de Lyon. Bon voyage !",tip:"Essaie de mémoriser ou note les informations."},
+      ]},
+    s4:{other:"Quai B, là à gauche. Vous voyez le panneau bleu ?",
+      choices:[
+        {text:"Oui je le vois, merci beaucoup !",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Non, je vois pas.",q:"warn",next:"s4e",r:"Suivez-moi, je vous montre."},
+        {text:"Merci infiniment pour votre aide !",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+        {text:"Panneau bleu… ok je cherche.",q:"warn",next:"s4e",r:"Là-bas, c'est le grand panneau bleu avec un 1 dessus.",tip:""},
+      ]},
+    s4b:{other:"Bon voyage ! N'hésitez pas à demander si besoin.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un merci et bonne journée c'est plus chaleureux."},
+        {text:"Merci beaucoup pour votre aide.",q:"ok",next:null,r:""},
+      ]},
+    s4c:{other:"L'arrêt de bus est à 50m, sortez par là-bas.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Super merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci pour votre aide.",q:"ok",next:null,r:""},
+      ]},
+    s4d:{other:"Appelez votre contact, c'est la meilleure solution.",
+      choices:[
+        {text:"Merci beaucoup pour votre aide !",q:"ok",next:null,r:""},
+        {text:"Je vais appeler, merci.",q:"ok",next:null,r:""},
+        {text:"Ok merci.",q:"warn",next:null,r:"",tip:""},
+        {text:"Bonne idée, merci.",q:"ok",next:null,r:""},
+      ]},
+    s4e:{other:"Suivez-moi, je vous montre le quai B.",
+      choices:[
+        {text:"Merci beaucoup, vous êtes très gentil(le) !",q:"ok",next:"end",r:"De rien ! Bon voyage !"},
+        {text:"Merci.",q:"ok",next:"end",r:"Bon voyage !"},
+        {text:"Super.",q:"warn",next:"end",r:"Bon voyage !",tip:""},
+        {text:"C'est très gentil, merci infiniment.",q:"ok",next:"end",r:"Bonne continuation !"},
+      ]},
+    end:{other:"Bon voyage !",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours remercier les personnes qui t'ont aidé."},
+        {text:"Merci, bonne journée à vous !",q:"ok",next:null,r:""},
+      ]},
+  }
+},,
+
+{
+  id:"restau",icon:"🍽️",name:"Réserver un restaurant",who:"Serveur(se)",ctx:"Tu appelles pour réserver une table",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonsoir, restaurant La Belle Époque, bonsoir !",
+      choices:[
+        {text:"Bonsoir, vous êtes ouverts ce soir ?",q:"warn",next:"s1w",r:"Oui jusqu'à 23h. Vous souhaitez réserver ?",tip:"C'est une question hors sujet. Dis directement ce que tu veux."},
+        {text:"Ouais, t'avez une table ce soir ?",q:"bad",next:"s1b",r:"Je n'ai pas compris, vous souhaitez réserver ?",tip:"Trop familier et pas clair. Dis bonjour et exprime ta demande poliment."},
+        {text:"Bonsoir ! Je voudrais réserver une table pour ce soir s'il vous plaît.",q:"ok",next:"s2",r:"Bien sûr ! Pour combien de personnes ?"},
+        {text:"Bonsoir, est-ce que vous avez de la place ce soir ?",q:"warn",next:"s2b",r:"Ça dépend du nombre. Vous serez combien ?",tip:"Mieux vaut dire directement que tu veux réserver."},
+      ]},
+    s1w:{other:"Oui on est ouverts. Vous souhaitez réserver ?",
+      choices:[
+        {text:"Oui, une table pour 2 ce soir s'il vous plaît.",q:"ok",next:"s3",r:"À quelle heure ?"},
+        {text:"Oui.",q:"warn",next:"s2",r:"Pour combien de personnes ?",tip:"Donne directement le nombre et ce que tu veux."},
+        {text:"Peut-être, je sais pas encore.",q:"bad",next:"s1w2",r:"Rappelez quand vous serez sûr !",tip:"N'appelle pas si tu n'es pas décidé."},
+        {text:"Oui je voudrais réserver.",q:"ok",next:"s2",r:"Pour combien de personnes ?"},
+      ]},
+    s1w2:{other:"Rappelez quand vous serez sûr.",
+      choices:[
+        {text:"Attendez ! Je veux réserver pour 2 personnes ce soir.",q:"ok",next:"s3",r:"À quelle heure ?"},
+        {text:"Ok, au revoir.",q:"bad",next:null,r:"",tip:"La conversation n'a pas abouti. Décide avant d'appeler."},
+        {text:"Pardon, je veux une table pour 2.",q:"ok",next:"s3",r:"À quelle heure ?"},
+        {text:"D'accord, je rappelle.",q:"warn",next:null,r:"",tip:"Prépare ta demande avant d'appeler."},
+      ]},
+    s1b:{other:"Vous souhaitez réserver ?",
+      choices:[
+        {text:"Oui pardon, bonsoir ! Je voudrais réserver une table pour 2 ce soir.",q:"ok",next:"s3",r:"À quelle heure ?"},
+        {text:"Oui une table.",q:"warn",next:"s2",r:"Pour combien de personnes ?",tip:"Sois plus précis dès le début."},
+        {text:"Ouais pour ce soir.",q:"bad",next:"s2",r:"Pour combien de personnes ?",tip:"Dis bonjour et sois poli."},
+        {text:"Oui bonsoir, pour 2 personnes s'il vous plaît.",q:"ok",next:"s3",r:"Très bien ! À quelle heure ?"},
+      ]},
+    s2:{other:"Pour combien de personnes ?",
+      choices:[
+        {text:"Je sais pas encore, peut-être 2 ou 3.",q:"bad",next:"s2c",r:"Il vaut mieux que je réserve pour combien exactement ?",tip:"Décide avant d'appeler."},
+        {text:"Pour 2 personnes s'il vous plaît.",q:"ok",next:"s3",r:"Et à quelle heure ?"},
+        {text:"Plusieurs personnes.",q:"bad",next:"s2c",r:"Plusieurs c'est combien exactement ?",tip:"Donne un nombre précis."},
+        {text:"2 personnes.",q:"ok",next:"s3",r:"Très bien. À quelle heure ?"},
+      ]},
+    s2b:{other:"Vous serez combien ?",
+      choices:[
+        {text:"2 personnes.",q:"ok",next:"s3",r:"D'accord. À quelle heure ?"},
+        {text:"On sera peut-être 2 ou 3.",q:"warn",next:"s2c",r:"Je réserve pour combien exactement ?",tip:"Donne un nombre précis."},
+        {text:"Juste moi et un ami.",q:"ok",next:"s3",r:"2 personnes, à quelle heure ?"},
+        {text:"Je sais pas encore.",q:"bad",next:"s2c",r:"Rappelez quand vous saurez.",tip:"Décide avant d'appeler."},
+      ]},
+    s2c:{other:"Je réserve pour combien exactement ?",
+      choices:[
+        {text:"Pour 2 s'il vous plaît.",q:"ok",next:"s3",r:"Très bien. À quelle heure ?"},
+        {text:"3 pour être sûr.",q:"ok",next:"s3",r:"D'accord, 3. À quelle heure ?"},
+        {text:"Je sais toujours pas.",q:"bad",next:"s3",r:"Je mets 2, vous confirmerez. À quelle heure ?",tip:"Il faut savoir combien on sera."},
+        {text:"2 personnes.",q:"ok",next:"s3",r:"À quelle heure ?"},
+      ]},
+    s3:{other:"À quelle heure vous souhaitez venir ?",
+      choices:[
+        {text:"Le soir.",q:"bad",next:"s3b",r:"Je n'ai pas compris. Quelle heure exactement ?",tip:"'Le soir' n'est pas une heure. Dis 19h, 20h…"},
+        {text:"Pas trop tard.",q:"warn",next:"s3c",r:"19h ou 20h, vous préférez ?",tip:"Donne une heure précise."},
+        {text:"À 20h si c'est possible.",q:"ok",next:"s4",r:"20h c'est disponible. C'est à quel nom ?"},
+        {text:"Vers 19h30 s'il vous plaît.",q:"ok",next:"s4",r:"19h30, c'est noté. C'est à quel nom ?"},
+      ]},
+    s3b:{other:"Quelle heure exactement ?",
+      choices:[
+        {text:"20h s'il vous plaît.",q:"ok",next:"s4",r:"Parfait. C'est à quel nom ?"},
+        {text:"Euh… 20h je pense.",q:"warn",next:"s4",r:"D'accord, 20h. C'est à quel nom ?",tip:"Réponds avec plus d'assurance."},
+        {text:"Je sais pas.",q:"bad",next:"s4",r:"Je mets 20h. C'est à quel nom ?",tip:"Décide d'une heure avant d'appeler."},
+        {text:"19h ou 20h, comme vous voulez.",q:"warn",next:"s3c",r:"Je préfère que vous choisissiez !",tip:"C'est toi qui choisis l'heure, pas le restaurant."},
+      ]},
+    s3c:{other:"19h ou 20h, vous préférez ?",
+      choices:[
+        {text:"20h s'il vous plaît.",q:"ok",next:"s4",r:"Parfait ! C'est à quel nom ?"},
+        {text:"19h.",q:"ok",next:"s4",r:"19h, noté. C'est à quel nom ?"},
+        {text:"Comme vous voulez.",q:"bad",next:"s4",r:"Je mets 20h alors. C'est à quel nom ?",tip:"C'est toi qui décides de l'heure."},
+        {text:"N'importe.",q:"bad",next:"s4",r:"Je mets 19h30. C'est à quel nom ?",tip:"Dis une heure précise."},
+      ]},
+    s4:{other:"C'est à quel nom ?",
+      choices:[
+        {text:"Mon nom.",q:"bad",next:"s4b",r:"Quel est votre nom s'il vous plaît ?",tip:"Dis ton prénom et nom clairement."},
+        {text:"C'est au nom de [Prénom Nom], merci !",q:"ok",next:"end",r:"Très bien, c'est noté ! À ce soir !"},
+        {text:"[Prénom] tout court.",q:"warn",next:"s4c",r:"Prénom et nom s'il vous plaît ?",tip:"Donne prénom ET nom pour la réservation."},
+        {text:"[Prénom Nom] s'il vous plaît.",q:"ok",next:"end",r:"Parfait, réservation confirmée ! À ce soir !"},
+      ]},
+    s4b:{other:"Quel est votre nom ?",
+      choices:[
+        {text:"[Prénom Nom].",q:"ok",next:"end",r:"Merci, c'est noté ! À ce soir !"},
+        {text:"Pardon, c'est [Prénom Nom].",q:"ok",next:"end",r:"Très bien ! À ce soir !"},
+        {text:"Je préfère pas dire.",q:"bad",next:"end",r:"Il me faut un nom pour la réservation…",tip:"Le nom est indispensable pour réserver."},
+        {text:"[Prénom], comme ça suffit ?",q:"warn",next:"s4c",r:"Et le nom de famille ?",tip:"Donne prénom ET nom."},
+      ]},
+    s4c:{other:"Et le nom de famille ?",
+      choices:[
+        {text:"[Nom], merci !",q:"ok",next:"end",r:"Parfait ! À ce soir !"},
+        {text:"[Nom].",q:"ok",next:"end",r:"Très bien ! À ce soir !"},
+        {text:"Pourquoi vous avez besoin de ça ?",q:"bad",next:"end",r:"Pour identifier votre table à votre arrivée.",tip:"Le nom de famille est normal pour une réservation."},
+        {text:"C'est [Nom].",q:"ok",next:"end",r:"Noté ! À ce soir !"},
+      ]},
+    end:{other:"C'est noté. À ce soir, bonne soirée !",
+      choices:[
+        {text:"Merci, bonne soirée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Merci, à ce soir !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un peu sec pour terminer. 'Merci bonne soirée' c'est mieux."},
+        {text:"(Tu raccroches sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours dire au revoir avant de raccrocher."},
+      ]},
+  }
+},
+{
+  id:"ami",icon:"👫",name:"Un ami prend des nouvelles",who:"Ton ami(e)",ctx:"Ton ami t'appelle pour savoir comment tu vas",
+  start:"s1",
+  steps:{
+    s1:{other:"Allô ? C'est [Prénom], ça va ?",
+      choices:[
+        {text:"(Silence de 10 secondes)",q:"bad",next:"s1b",r:"Allô ? T'es là ?",tip:"Le silence au téléphone est gênant. Réponds rapidement."},
+        {text:"Ouais.",q:"warn",next:"s2b",r:"Juste ouais ? T'as l'air dans les vapes !",tip:"'Ouais' tout seul c'est un peu court. Réponds plus chaleureusement."},
+        {text:"Salut [Prénom] ! Oui ça va et toi ?",q:"ok",next:"s2",r:"Ça va bien merci ! T'as fait quoi aujourd'hui ?"},
+        {text:"Ah salut ! Bien et toi, comment tu vas ?",q:"ok",next:"s2",r:"Bien merci ! T'as fait quoi de beau ?"},
+      ]},
+    s1b:{other:"Allô ? T'es là ?",
+      choices:[
+        {text:"Oui pardon ! Salut, ça va bien et toi ?",q:"ok",next:"s2",r:"Bien ! T'as fait quoi ?"},
+        {text:"Ouais je suis là.",q:"warn",next:"s2b",r:"Ça va toi ?",tip:"Pose-lui la question en retour."},
+        {text:"Oui…",q:"warn",next:"s2b",r:"T'as l'air fatigué ? Ça va ?",tip:"Réponds avec un peu plus d'enthousiasme."},
+        {text:"Salut oui pardon j'entendais mal !",q:"ok",next:"s2",r:"Ah ok ! T'as fait quoi aujourd'hui ?"},
+      ]},
+    s2:{other:"T'as fait quoi de beau aujourd'hui ?",
+      choices:[
+        {text:"Rien.",q:"bad",next:"s2c",r:"Rien du tout ? T'es resté chez toi ?",tip:"'Rien' coupe la conversation. Dis quelque chose même de simple."},
+        {text:"Pas grand-chose, je me suis reposé. Et toi ?",q:"ok",next:"s3",r:"Moi j'ai été me balader au parc ! Tu veux qu'on se voit ce week-end ?"},
+        {text:"J'ai regardé une série, bien dormi. T'as fait quoi toi ?",q:"ok",next:"s3",r:"Cool ! J'ai été me promener. On se voit ce week-end ?"},
+        {text:"Des trucs.",q:"bad",next:"s2c",r:"Des trucs genre… ?",tip:"Donne plus de détails, c'est une conversation !"},
+      ]},
+    s2b:{other:"Ça va toi ?",
+      choices:[
+        {text:"Oui ça va merci ! Et toi ?",q:"ok",next:"s2",r:"Bien aussi ! T'as fait quoi aujourd'hui ?"},
+        {text:"Bof.",q:"warn",next:"s2d",r:"Bof ? Qu'est-ce qui se passe ?",tip:"Si tu dis bof, ton ami va s'inquiéter. Explique ou rassure-le."},
+        {text:"Oui.",q:"warn",next:"s2",r:"Super. T'as fait quoi ?",tip:"Pose une question en retour pour montrer que tu t'intéresses à lui."},
+        {text:"Ouais ça va, un peu fatigué. Et toi tu vas bien ?",q:"ok",next:"s2",r:"Oui ça va ! T'as fait quoi ?"},
+      ]},
+    s2c:{other:"T'as l'air pas très bavard aujourd'hui !",
+      choices:[
+        {text:"Pardon, je suis un peu fatigué. J'ai regardé une série.",q:"ok",next:"s3",r:"Ah ok ! On se voit ce week-end ?"},
+        {text:"Je sais pas quoi dire.",q:"warn",next:"s3",r:"Ça arrive ! On se voit ce week-end ?",tip:"Dans une conversation, essaie de partager quelque chose de ta journée."},
+        {text:"Je suis comme ça.",q:"bad",next:"s3",r:"Ok… on se voit ce week-end quand même ?",tip:"Fais un effort pour communiquer avec tes amis."},
+        {text:"Oui pardon ! J'ai été chez le médecin ce matin.",q:"ok",next:"s2e",r:"Ah bon ? Tout va bien ?"},
+      ]},
+    s2d:{other:"Bof ? Qu'est-ce qui se passe ?",
+      choices:[
+        {text:"Non c'est rien, j'étais juste fatigué. Ça va mieux !",q:"ok",next:"s3",r:"Ah ok ! On se voit ce week-end ?"},
+        {text:"J'ai pas trop envie de parler.",q:"warn",next:"s2f",r:"Ok je comprends. T'as besoin de quelque chose ?",tip:"C'est ok de ne pas vouloir parler, mais dis-le gentiment."},
+        {text:"J'ai eu une mauvaise journée.",q:"ok",next:"s2g",r:"Qu'est-ce qui s'est passé ?"},
+        {text:"Rien laisse tomber.",q:"bad",next:"s3",r:"Ok… on se voit ce week-end ?",tip:"Si tu as un problème, partager peut aider. Mais c'est ton choix."},
+      ]},
+    s2e:{other:"Tout va bien ? C'était grave ?",
+      choices:[
+        {text:"Non rien de grave, un check-up. Tout va bien !",q:"ok",next:"s3",r:"Super ! On se voit ce week-end ?"},
+        {text:"Pas grand-chose, un rhume.",q:"ok",next:"s3",r:"Repose-toi ! On se voit ce week-end si tu vas mieux ?"},
+        {text:"Je préfère pas en parler.",q:"warn",next:"s3",r:"Ok pas de souci ! On se voit ce week-end ?",tip:"C'est ton droit de ne pas vouloir en parler."},
+        {text:"Oui oui tout va bien, merci de demander !",q:"ok",next:"s3",r:"Tant mieux ! On se voit ce week-end ?"},
+      ]},
+    s2f:{other:"Ok. T'as besoin de quelque chose ?",
+      choices:[
+        {text:"Non merci c'est gentil. Je t'appelle demain ?",q:"ok",next:"end",r:"Bien sûr ! Prends soin de toi. Bisous !"},
+        {text:"Non.",q:"warn",next:"end",r:"Ok. Je suis là si t'as besoin. À bientôt !",tip:"Un 'non merci' ou 'c'est gentil' c'est plus sympa."},
+        {text:"Si tu pouvais passer me voir ça serait cool.",q:"ok",next:"s2f2",r:"Bien sûr ! Je passe quand ?"},
+        {text:"Laisse tomber.",q:"bad",next:"end",r:"Ok… à bientôt.",tip:"Tes amis veulent t'aider. Sois un peu plus ouvert."},
+      ]},
+    s2f2:{other:"Je passe quand ?",
+      choices:[
+        {text:"Cet après-midi si t'es libre ?",q:"ok",next:"end",r:"OK j'arrive vers 15h ! À tout à l'heure !"},
+        {text:"Comme tu veux.",q:"warn",next:"end",r:"Je passe à 15h alors. Ça marche ?",tip:"Propose une heure précise."},
+        {text:"Ce week-end peut-être.",q:"ok",next:"end",r:"Samedi ça te va ? À bientôt !"},
+        {text:"Je sais pas.",q:"warn",next:"end",r:"Dis-moi quand tu veux. Je suis là !",tip:"Propose une plage horaire."},
+      ]},
+    s2g:{other:"Qu'est-ce qui s'est passé ?",
+      choices:[
+        {text:"J'ai raté mon bus et j'étais en retard partout.",q:"ok",next:"s3",r:"Oh c'est nul ! Repose-toi ce soir. On se voit ce week-end ?"},
+        {text:"C'est compliqué à expliquer.",q:"warn",next:"s3",r:"Ok pas de souci. On se voit ce week-end ?",tip:"Essaie de partager un peu avec tes amis."},
+        {text:"J'ai eu une dispute.",q:"ok",next:"s2g2",r:"Oh… avec qui ?"},
+        {text:"Rien de grave.",q:"ok",next:"s3",r:"Ok ! On se voit ce week-end ?"},
+      ]},
+    s2g2:{other:"Avec qui ?",
+      choices:[
+        {text:"Un collègue, mais c'est réglé.",q:"ok",next:"s3",r:"Tant mieux ! On se voit ce week-end ?"},
+        {text:"Je préfère pas dire.",q:"ok",next:"s3",r:"Ok, c'est ton droit ! On se voit ce week-end ?"},
+        {text:"Avec ma famille.",q:"ok",next:"s3",r:"Oh… ça va maintenant ? On se voit ce week-end pour te changer les idées ?"},
+        {text:"Peu importe.",q:"warn",next:"s3",r:"Ok. On se voit ce week-end ?",tip:""},
+      ]},
+    s3:{other:"On se voit ce week-end ?",
+      choices:[
+        {text:"Oui avec plaisir ! Samedi ou dimanche ?",q:"ok",next:"s4",r:"Samedi pour moi c'est mieux. On fait quoi ?"},
+        {text:"Je sais pas.",q:"warn",next:"s3b",r:"T'as des trucs de prévus ?",tip:"Essaie de proposer quelque chose."},
+        {text:"Non j'ai pas envie.",q:"bad",next:"s3c",r:"Ah ok… t'es sûr ? On peut faire quelque chose de calme.",tip:"Essaie d'accepter les invitations de tes amis. C'est important pour garder le lien."},
+        {text:"Oui carrément ! Qu'est-ce que tu proposes ?",q:"ok",next:"s4b",r:"On pourrait aller au ciné ou faire une balade. T'as une préférence ?"},
+      ]},
+    s3b:{other:"T'as des trucs de prévus ce week-end ?",
+      choices:[
+        {text:"Non je suis libre ! On se voit quand ?",q:"ok",next:"s4",r:"Super ! Samedi ?"},
+        {text:"Je crois pas.",q:"warn",next:"s4",r:"Alors samedi ? On fait quoi ?",tip:"Si t'es libre dis-le clairement."},
+        {text:"Je sais pas encore.",q:"warn",next:"s4",r:"Dis-moi quand tu sais !",tip:"Essaie de te décider."},
+        {text:"Non rien, samedi ça marche !",q:"ok",next:"s4",r:"Super ! On fait quoi ?"},
+      ]},
+    s3c:{other:"T'es sûr ? On peut faire quelque chose de calme.",
+      choices:[
+        {text:"Ok, juste une balade alors.",q:"ok",next:"s4",r:"Super ! Samedi ?"},
+        {text:"Non vraiment pas envie.",q:"bad",next:"end",r:"Ok… n'hésite pas à m'appeler si t'as besoin.",tip:"Essaie de voir tes amis même quand tu n'as pas trop envie. Ça aide !"},
+        {text:"Pourquoi pas, samedi ?",q:"ok",next:"s4",r:"Samedi parfait ! On fait quoi ?"},
+        {text:"Bah si t'insistes…",q:"warn",next:"s4",r:"Je t'emmène pas de force hein ! Mais je pense que ça te fera du bien.",tip:"Dis oui avec plus d'enthousiasme !"},
+      ]},
+    s4:{other:"Samedi on fait quoi ?",
+      choices:[
+        {text:"Une balade et on mange quelque chose ?",q:"ok",next:"end",r:"Trop bien ! Je passe te chercher à 14h ?"},
+        {text:"Je sais pas, t'as une idée ?",q:"warn",next:"s4c",r:"On pourrait aller au ciné ou au parc. T'as une préférence ?",tip:"Propose quelque chose, même une idée simple."},
+        {text:"Le ciné, il y a un film sympa !",q:"ok",next:"end",r:"Trop bien ! On se retrouve devant à 15h ?"},
+        {text:"N'importe.",q:"bad",next:"end",r:"Je choisis alors : balade au parc à 14h !",tip:"Participe au choix des activités."},
+      ]},
+    s4b:{other:"Ciné ou balade, t'as une préférence ?",
+      choices:[
+        {text:"Balade, j'ai besoin de prendre l'air !",q:"ok",next:"end",r:"Parfait ! On se retrouve au parc à 14h ?"},
+        {text:"Les deux !",q:"warn",next:"end",r:"Ok balade puis sandwichs ! 14h ?",tip:"Choisis une activité principale."},
+        {text:"Le ciné.",q:"ok",next:"end",r:"Super ! 15h devant le ciné ?"},
+        {text:"Peu importe.",q:"bad",next:"end",r:"Je choisis : balade ! 14h ?",tip:"Implique-toi dans le choix."},
+      ]},
+    s4c:{other:"Ciné ou parc, t'as une préférence ?",
+      choices:[
+        {text:"Le parc, j'ai envie de bouger.",q:"ok",next:"end",r:"Super ! 14h au parc ?"},
+        {text:"Le ciné.",q:"ok",next:"end",r:"Cool ! 15h devant le ciné ?"},
+        {text:"Comme tu veux.",q:"bad",next:"end",r:"Je choisis : parc, 14h !",tip:"Participe au choix !"},
+        {text:"Les deux !",q:"warn",next:"end",r:"On verra sur place ! 14h au parc ?",tip:"Choisis une activité."},
+      ]},
+    end:{other:"Ok c'est noté ! À samedi alors, bisous !",
+      choices:[
+        {text:"À samedi, bisous !",q:"ok",next:null,r:""},
+        {text:"Merci d'avoir appelé, à bientôt !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un peu sec pour conclure. 'À samedi bisous' c'est plus sympa."},
+        {text:"(Tu raccroches sans rien dire)",q:"bad",next:null,r:"",tip:"Dis toujours au revoir avant de raccrocher."},
+      ]},
+  }
+},
+{
+  id:"medecin",icon:"🏥",name:"Prendre RDV chez le médecin",who:"Secrétaire médicale",ctx:"Tu appelles le cabinet pour un rendez-vous",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonjour, cabinet du docteur Martin, j'écoute.",
+      choices:[
+        {text:"Bonjour, je voudrais prendre un rendez-vous avec le docteur Martin s'il vous plaît.",q:"ok",next:"s2",r:"Bien sûr ! C'est pour quel motif ?"},
+        {text:"Ouais bonjour, j'ai besoin d'un RDV.",q:"warn",next:"s2b",r:"Avec quel médecin et pour quel motif ?",tip:"Précise le nom du médecin et sois un peu plus poli."},
+        {text:"Le docteur est là ?",q:"bad",next:"s1b",r:"Il est en consultation. Je peux vous aider ?",tip:"Ne demande pas si le médecin est là — parle à la secrétaire et dis ce que tu veux."},
+        {text:"Bonjour, j'aimerais avoir un rendez-vous rapidement.",q:"warn",next:"s2c",r:"Pour quel motif et avec quel médecin ?",tip:"Mentionne le nom du médecin dès le début."},
+      ]},
+    s1b:{other:"Il est en consultation. Je peux vous aider ?",
+      choices:[
+        {text:"Oui bonjour, je voudrais prendre un rendez-vous.",q:"ok",next:"s2",r:"Bien sûr ! Motif de la consultation ?"},
+        {text:"Je veux juste lui parler.",q:"bad",next:"s2",r:"Il ne peut pas être dérangé. Je prends un message ou un RDV ?",tip:"On ne dérange pas un médecin en consultation. Passe par la secrétaire."},
+        {text:"Oui, je veux un rendez-vous s'il vous plaît.",q:"ok",next:"s2",r:"Quel est le motif ?"},
+        {text:"Non c'est bon.",q:"bad",next:null,r:"",tip:"La secrétaire peut t'aider. N'hésite pas à demander un RDV."},
+      ]},
+    s2:{other:"C'est pour quel motif de consultation ?",
+      choices:[
+        {text:"Je suis malade.",q:"warn",next:"s2d",r:"Quels symptômes vous avez ?",tip:"Sois plus précis sur tes symptômes."},
+        {text:"J'ai mal à la gorge et de la fièvre depuis 3 jours.",q:"ok",next:"s3",r:"D'accord. Vous êtes patient du cabinet ?"},
+        {text:"C'est personnel.",q:"bad",next:"s2e",r:"Je comprends mais j'ai besoin d'un motif pour le dossier.",tip:"La secrétaire a besoin d'un motif médical, pas de détails intimes."},
+        {text:"Renouvellement d'ordonnance et bilan de santé.",q:"ok",next:"s3",r:"Très bien. Vous êtes patient ici ?"},
+      ]},
+    s2b:{other:"Avec quel médecin et quel motif ?",
+      choices:[
+        {text:"Docteur Martin, j'ai de la fièvre depuis 3 jours.",q:"ok",next:"s3",r:"D'accord. Vous êtes patient du cabinet ?"},
+        {text:"Je sais pas son nom.",q:"bad",next:"s2f",r:"Vous avez une carte de médecin traitant ?",tip:"Il faut connaître le nom de son médecin traitant."},
+        {text:"Docteur Martin, pour un renouvellement.",q:"ok",next:"s3",r:"Très bien. Vous êtes patient ici ?"},
+        {text:"Le premier disponible.",q:"warn",next:"s2g",r:"On a le docteur Martin ou la docteure Duval. Une préférence ?",tip:"Précise ton médecin traitant."},
+      ]},
+    s2c:{other:"Motif et médecin s'il vous plaît ?",
+      choices:[
+        {text:"Docteur Martin, j'ai mal à la gorge.",q:"ok",next:"s3",r:"Vous êtes patient du cabinet ?"},
+        {text:"C'est urgent.",q:"warn",next:"s2h",r:"Quels symptômes ? Je vois si on peut vous prendre en urgence.",tip:"'Urgent' ne suffit pas, donne tes symptômes."},
+        {text:"Docteur Martin pour un suivi.",q:"ok",next:"s3",r:"Vous êtes patient ici ?"},
+        {text:"Le docteur Martin, j'ai de la fièvre.",q:"ok",next:"s3",r:"D'accord. Vous êtes patient du cabinet ?"},
+      ]},
+    s2d:{other:"Quels symptômes vous avez ?",
+      choices:[
+        {text:"Mal de gorge, fièvre 38.5 depuis hier.",q:"ok",next:"s3",r:"D'accord. Vous êtes patient du cabinet ?"},
+        {text:"Je suis pas bien.",q:"bad",next:"s2d2",r:"Pouvez-vous préciser ?",tip:"Décris tes symptômes précisément."},
+        {text:"Toux, fièvre, fatigue depuis 2 jours.",q:"ok",next:"s3",r:"Très bien. Vous êtes patient ici ?"},
+        {text:"Je sais pas trop.",q:"warn",next:"s2d2",r:"Mal quelque part ? Fièvre ?",tip:"Essaie de décrire ce que tu ressens."},
+      ]},
+    s2d2:{other:"Mal quelque part ? Fièvre ?",
+      choices:[
+        {text:"Oui mal à la gorge et j'ai chaud.",q:"ok",next:"s3",r:"D'accord. Vous êtes patient ici ?"},
+        {text:"J'ai chaud et je tousse.",q:"ok",next:"s3",r:"Très bien. Vous êtes patient du cabinet ?"},
+        {text:"Je sais vraiment pas.",q:"bad",next:"s3",r:"D'accord, je vous mets pour un bilan. Patient du cabinet ?",tip:"Observe ce que tu ressens avant d'appeler."},
+        {text:"Oui fièvre et fatigue.",q:"ok",next:"s3",r:"Bien. Patient du cabinet ?"},
+      ]},
+    s2e:{other:"J'ai besoin d'un motif médical pour le dossier.",
+      choices:[
+        {text:"J'ai de la fièvre et mal à la gorge.",q:"ok",next:"s3",r:"Merci ! Vous êtes patient du cabinet ?"},
+        {text:"Des douleurs abdominales.",q:"ok",next:"s3",r:"D'accord. Patient du cabinet ?"},
+        {text:"Je veux quand même pas le dire.",q:"bad",next:"s3",r:"D'accord, je mets suivi général. Patient du cabinet ?",tip:"La secrétaire est tenue au secret professionnel."},
+        {text:"Renouvellement d'ordonnance.",q:"ok",next:"s3",r:"Bien. Patient du cabinet ?"},
+      ]},
+    s2f:{other:"Vous avez une carte de médecin traitant ?",
+      choices:[
+        {text:"Oui, c'est le docteur Martin.",q:"ok",next:"s3",r:"Parfait. Motif de consultation ?"},
+        {text:"Je retrouve pas ma carte.",q:"warn",next:"s2f2",r:"Pas de problème. Votre nom suffit, on a votre dossier.",tip:"Connais le nom de ton médecin traitant."},
+        {text:"Non j'en ai pas.",q:"bad",next:"s2f2",r:"Il faudra en déclarer un. Votre nom pour chercher le dossier ?",tip:"Il est important d'avoir un médecin traitant déclaré."},
+        {text:"Je crois que c'est le docteur Martin.",q:"ok",next:"s3",r:"Oui il est bien dans le cabinet. Motif ?"},
+      ]},
+    s2f2:{other:"Votre nom pour chercher le dossier.",
+      choices:[
+        {text:"C'est [Prénom Nom].",q:"ok",next:"s3",r:"Je vous trouve. Motif de la consultation ?"},
+        {text:"[Prénom Nom].",q:"ok",next:"s3",r:"D'accord. Motif ?"},
+        {text:"Pourquoi vous avez besoin de ça ?",q:"bad",next:"s3",r:"Pour retrouver votre dossier médical.",tip:"La secrétaire a besoin de ton nom pour ton dossier."},
+        {text:"[Prénom], c'est suffisant non ?",q:"warn",next:"s2f3",r:"Prénom et nom s'il vous plaît.",tip:"Donne prénom et nom complet."},
+      ]},
+    s2f3:{other:"Prénom ET nom s'il vous plaît.",
+      choices:[
+        {text:"[Prénom Nom], pardon.",q:"ok",next:"s3",r:"Merci. Motif ?"},
+        {text:"[Prénom Nom].",q:"ok",next:"s3",r:"Voilà. Motif ?"},
+        {text:"C'est [Prénom Nom].",q:"ok",next:"s3",r:"D'accord. Motif ?"},
+        {text:"Je préfère pas le dire.",q:"bad",next:"s3",r:"Je ne peux pas créer le dossier sans votre nom.",tip:"Il faut donner son nom pour un rendez-vous médical."},
+      ]},
+    s2g:{other:"Docteur Martin ou docteure Duval ?",
+      choices:[
+        {text:"Le docteur Martin, c'est mon médecin traitant.",q:"ok",next:"s3",r:"Très bien. Motif ?"},
+        {text:"Le premier disponible.",q:"warn",next:"s3",r:"Docteure Duval est disponible demain. Motif ?",tip:"Consulte de préférence ton médecin traitant."},
+        {text:"Je sais pas.",q:"bad",next:"s3",r:"Je vous mets avec le docteur Martin. Motif ?",tip:"Connais ton médecin traitant."},
+        {text:"Docteur Martin.",q:"ok",next:"s3",r:"D'accord. Motif ?"},
+      ]},
+    s2h:{other:"Quels symptômes ? Je vois si c'est urgent.",
+      choices:[
+        {text:"Fièvre 40 depuis 2 jours, je me sens très mal.",q:"ok",next:"s3u",r:"C'est urgent effectivement. On peut vous prendre dans l'heure."},
+        {text:"Mal à la gorge.",q:"warn",next:"s3",r:"C'est pas une urgence, je vous mets demain.",tip:"Décris bien tes symptômes pour évaluer l'urgence."},
+        {text:"Je tousse beaucoup.",q:"warn",next:"s3",r:"Je vous mets en fin de semaine.",tip:""},
+        {text:"Douleur thoracique et du mal à respirer.",q:"ok",next:"s3u",r:"C'est urgent ! Je vous prends dans 30 minutes."},
+      ]},
+    s3:{other:"Vous êtes déjà patient du cabinet ?",
+      choices:[
+        {text:"Oui, je viens depuis 2 ans.",q:"ok",next:"s4",r:"Je retrouve votre dossier. Vous êtes disponible jeudi à 14h30 ?"},
+        {text:"Non, c'est la première fois.",q:"ok",next:"s4b",r:"D'accord, je crée un dossier. Votre nom et date de naissance ?"},
+        {text:"Je sais pas.",q:"warn",next:"s4",r:"Votre nom, je vérifie.",tip:""},
+        {text:"Oui.",q:"ok",next:"s4",r:"Je cherche votre dossier. Jeudi 14h30 ?"},
+      ]},
+    s3u:{other:"Je vous prends en urgence. Vous pouvez venir dans l'heure ?",
+      choices:[
+        {text:"Oui j'arrive, merci beaucoup !",q:"ok",next:"end",r:"Parfait ! Demandez à l'accueil en arrivant."},
+        {text:"Oui je prends mes affaires.",q:"ok",next:"end",r:"Venez dès que possible !"},
+        {text:"Peut-être pas dans l'heure.",q:"warn",next:"s3u2",r:"Dans combien de temps vous pouvez venir ?",tip:"En urgence, essaie de te déplacer rapidement."},
+        {text:"Ok merci.",q:"ok",next:"end",r:"Venez vite !"},
+      ]},
+    s3u2:{other:"Dans combien de temps vous pouvez venir ?",
+      choices:[
+        {text:"Dans 30 minutes.",q:"ok",next:"end",r:"Parfait ! On vous attend."},
+        {text:"Une heure environ.",q:"ok",next:"end",r:"D'accord, à tout à l'heure."},
+        {text:"Je sais pas.",q:"warn",next:"end",r:"Venez le plus vite possible.",tip:""},
+        {text:"2h peut-être.",q:"warn",next:"end",r:"D'accord, mais si ça empire appelez le 15.",tip:"En cas d'urgence vraie, n'attends pas."},
+      ]},
+    s4:{other:"Vous êtes disponible jeudi à 14h30 ?",
+      choices:[
+        {text:"Oui jeudi 14h30, c'est parfait !",q:"ok",next:"s5",r:"Je note votre nom ?"},
+        {text:"Non j'ai pas de voiture jeudi.",q:"warn",next:"s4c",r:"On a aussi vendredi matin ou mardi après-midi ?",tip:"Dis que tu n'es pas disponible et propose une alternative."},
+        {text:"Jeudi c'est quoi comme date ?",q:"ok",next:"s4d",r:"C'est le 18. Ça vous convient ?"},
+        {text:"Oui ça me convient, merci.",q:"ok",next:"s5",r:"Votre nom pour confirmer ?"},
+      ]},
+    s4b:{other:"Votre nom et date de naissance ?",
+      choices:[
+        {text:"[Prénom Nom], né(e) le [date].",q:"ok",next:"s4",r:"Merci, dossier créé. Jeudi 14h30 ?"},
+        {text:"[Prénom Nom].",q:"warn",next:"s4b2",r:"Et votre date de naissance ?",tip:"Donne les deux informations demandées."},
+        {text:"Je préfère pas donner ça.",q:"bad",next:"s4",r:"C'est obligatoire pour le dossier médical.",tip:"Le nom et la date de naissance sont nécessaires pour créer un dossier."},
+        {text:"C'est [Prénom Nom] né(e) le [date].",q:"ok",next:"s4",r:"Parfait ! Jeudi 14h30 ?"},
+      ]},
+    s4b2:{other:"Et votre date de naissance ?",
+      choices:[
+        {text:"Le [date].",q:"ok",next:"s4",r:"Merci ! Jeudi 14h30 ?"},
+        {text:"Je préfère pas le dire.",q:"bad",next:"s4",r:"C'est obligatoire pour le dossier.",tip:"La date de naissance est nécessaire pour un dossier médical."},
+        {text:"Le [date de naissance].",q:"ok",next:"s4",r:"Noté. Jeudi 14h30 ?"},
+        {text:"Pourquoi vous avez besoin de ça ?",q:"warn",next:"s4",r:"Pour créer votre dossier et éviter les confusions.",tip:"C'est une information médicale standard."},
+      ]},
+    s4c:{other:"Vendredi matin ou mardi après-midi ?",
+      choices:[
+        {text:"Vendredi matin s'il vous plaît.",q:"ok",next:"s5",r:"À 9h30 ça vous va ?"},
+        {text:"Mardi après-midi.",q:"ok",next:"s5",r:"À 16h, ça vous convient ?"},
+        {text:"N'importe lequel.",q:"warn",next:"s5",r:"Je mets vendredi 9h30.",tip:"Choisis toi-même le créneau."},
+        {text:"Vous avez pas autre chose ?",q:"warn",next:"s4c2",r:"Ce sont les seuls créneaux disponibles cette semaine.",tip:"Accepte les créneaux proposés ou attends la semaine suivante."},
+      ]},
+    s4c2:{other:"Ce sont les seuls créneaux de la semaine.",
+      choices:[
+        {text:"D'accord, vendredi matin alors.",q:"ok",next:"s5",r:"9h30. Votre nom ?"},
+        {text:"Mardi après-midi.",q:"ok",next:"s5",r:"16h, votre nom ?"},
+        {text:"Alors la semaine prochaine.",q:"ok",next:"s4e",r:"Lundi ou mercredi la semaine prochaine ?"},
+        {text:"C'est nul.",q:"bad",next:"s5",r:"Je vous mets vendredi 9h30.",tip:"La secrétaire ne contrôle pas les disponibilités du médecin. Sois poli."},
+      ]},
+    s4d:{other:"C'est le 18. Ça vous convient ?",
+      choices:[
+        {text:"Oui le 18 à 14h30, c'est parfait !",q:"ok",next:"s5",r:"Votre nom pour confirmer ?"},
+        {text:"Oui ça va.",q:"ok",next:"s5",r:"Votre nom ?"},
+        {text:"Attendez, je vérifie mon agenda.",q:"ok",next:"s4d2",r:"Prenez votre temps."},
+        {text:"Je sais pas si je suis libre.",q:"warn",next:"s4d2",r:"Vérifiez votre agenda, je patiente.",tip:"Vérifier son agenda avant d'appeler est idéal."},
+      ]},
+    s4d2:{other:"Prenez votre temps.",
+      choices:[
+        {text:"Le 18 c'est bon pour moi.",q:"ok",next:"s5",r:"Parfait ! Votre nom ?"},
+        {text:"Non je suis pas libre ce jour-là.",q:"ok",next:"s4c",r:"On a vendredi ou mardi, ça vous va ?"},
+        {text:"(Longue pause) Oui ça va.",q:"ok",next:"s5",r:"Votre nom pour confirmer ?"},
+        {text:"Je sais toujours pas.",q:"bad",next:"s5",r:"Je vous mets quand même le 18, vous annulez si besoin.",tip:"Vérifier son agenda avant d'appeler évite ce genre de situation."},
+      ]},
+    s4e:{other:"Lundi ou mercredi la semaine prochaine ?",
+      choices:[
+        {text:"Lundi s'il vous plaît.",q:"ok",next:"s5",r:"Lundi à 10h. Votre nom ?"},
+        {text:"Mercredi.",q:"ok",next:"s5",r:"Mercredi 15h. Votre nom ?"},
+        {text:"Le plus tôt possible.",q:"warn",next:"s5",r:"Lundi alors. Votre nom ?",tip:"Dis le jour qui t'arrange."},
+        {text:"N'importe.",q:"warn",next:"s5",r:"Lundi 10h. Votre nom ?",tip:"Participe au choix."},
+      ]},
+    s5:{other:"Je note votre nom pour confirmer ?",
+      choices:[
+        {text:"Oui, c'est [Prénom Nom].",q:"ok",next:"end",r:"Parfait ! Rendez-vous noté. On vous appelle si annulation."},
+        {text:"[Prénom Nom].",q:"ok",next:"end",r:"Très bien ! Rendez-vous confirmé."},
+        {text:"Je vous l'ai déjà dit.",q:"bad",next:"end",r:"Oui mais je reconfirme pour le RDV. Merci.",tip:"La secrétaire confirme toujours le nom pour éviter les erreurs. Sois patient."},
+        {text:"C'est [Prénom Nom], merci beaucoup !",q:"ok",next:"end",r:"Avec plaisir ! À jeudi !"},
+      ]},
+    end:{other:"RDV confirmé. N'oubliez pas votre carte Vitale. Bonne journée !",
+      choices:[
+        {text:"Merci, bonne journée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Merci beaucoup, à bientôt !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"'Merci bonne journée' c'est plus poli."},
+        {text:"(Tu raccroches sans rien dire)",q:"bad",next:null,r:"",tip:"Dis toujours merci et au revoir."},
+      ]},
+  }
+},
+{
+  id:"coiffeur",icon:"✂️",name:"Chez le coiffeur",who:"Coiffeur/se",ctx:"Tu entres dans le salon de coiffure",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonjour ! Vous avez rendez-vous ?",
+      choices:[
+        {text:"Bonjour ! Non, je voulais savoir si vous pouviez me prendre.",q:"ok",next:"s2",r:"Oui on peut vous prendre dans 10 minutes. Qu'est-ce que vous souhaitez ?"},
+        {text:"Ouais j'ai pas de RDV.",q:"warn",next:"s2b",r:"D'accord. On peut vous prendre dans 20 minutes, vous attendez ?",tip:"Sois un peu plus poli. 'Bonjour, je n'ai pas de rendez-vous' c'est mieux."},
+        {text:"Bonjour, oui j'ai rendez-vous.",q:"bad",next:"s1b",r:"À quel nom ?",tip:"Ne ments pas si tu n'as pas de rendez-vous."},
+        {text:"Bonjour, oui j'ai rendez-vous à 14h, c'est pour [Prénom].",q:"ok",next:"s1c",r:"Oui je vous trouve ! Installez-vous, j'arrive."},
+      ]},
+    s1b:{other:"À quel nom ?",
+      choices:[
+        {text:"Euh… j'ai pas vraiment de RDV en fait.",q:"ok",next:"s2b",r:"Pas de souci ! On peut vous prendre dans 20 min.",tip:"Mieux vaut dire la vérité dès le début."},
+        {text:"[Prénom].",q:"bad",next:"s1b2",r:"Je ne retrouve pas votre RDV.",tip:"Ne ments pas au coiffeur."},
+        {text:"Pardon, j'ai pas de RDV, je tentais ma chance.",q:"ok",next:"s2b",r:"Ha ha ! Pas de problème, 20 minutes d'attente."},
+        {text:"Je voulais juste voir si vous étiez libres.",q:"ok",next:"s2b",r:"On vous prend dans 20 minutes !"},
+      ]},
+    s1b2:{other:"Je ne retrouve pas votre RDV.",
+      choices:[
+        {text:"Ah… j'ai dû me tromper de jour. En fait j'ai pas de RDV.",q:"ok",next:"s2b",r:"Pas de souci ! 20 minutes d'attente ?"},
+        {text:"C'est bizarre, j'en suis sûr.",q:"bad",next:"s1b3",r:"Il n'y a vraiment rien à votre nom.",tip:"Si tu n'as pas pris RDV, dis-le franchement."},
+        {text:"Pardon, j'ai menti. Je voulais savoir si vous pouviez me prendre.",q:"ok",next:"s2b",r:"Je comprends ! 20 minutes d'attente."},
+        {text:"Peut-être c'était hier ?",q:"warn",next:"s2b",r:"Peu importe, on vous prend sans RDV aujourd'hui.",tip:""},
+      ]},
+    s1b3:{other:"Vraiment rien à votre nom.",
+      choices:[
+        {text:"Pardon, j'avoue je n'avais pas de RDV.",q:"ok",next:"s2b",r:"Ça arrive ! 20 minutes."},
+        {text:"C'est vous qui avez mal regardé.",q:"bad",next:"s2b",r:"Non, pas de RDV. Je vous prends quand même dans 20 min.",tip:"Ne sois pas agressif. C'est toi qui n'avais pas de RDV."},
+        {text:"Bon ok j'avais pas de RDV.",q:"ok",next:"s2b",r:"Bien ! On vous prend dans 20 min."},
+        {text:"Je sais pas.",q:"warn",next:"s2b",r:"On vous prend dans 20 minutes.",tip:""},
+      ]},
+    s1c:{other:"Installez-vous, j'arrive dans 2 minutes !",
+      choices:[
+        {text:"Merci !",q:"ok",next:"s3",r:"Voilà ! Qu'est-ce qu'on fait aujourd'hui ?"},
+        {text:"Ok.",q:"warn",next:"s3",r:"Installez-vous ! Qu'est-ce qu'on fait ?",tip:""},
+        {text:"Je veux bien un café en attendant.",q:"warn",next:"s3b",r:"On n'en propose pas désolé. Qu'est-ce qu'on fait ?",tip:"Attends qu'on te propose quelque chose."},
+        {text:"Super, merci beaucoup !",q:"ok",next:"s3",r:"Voilà ! Qu'est-ce qu'on fait aujourd'hui ?"},
+      ]},
+    s2:{other:"Qu'est-ce que vous souhaitez comme coupe ?",
+      choices:[
+        {text:"Juste une coupe, raccourcir un peu les pointes.",q:"ok",next:"s4",r:"Vous voulez enlever combien ? 2cm, 5cm ?"},
+        {text:"Faites ce que vous voulez.",q:"bad",next:"s2c",r:"Je préfère que ce soit vous qui décidiez ! Vous voulez quoi comme résultat ?",tip:"Le coiffeur a besoin de tes instructions. Tu décides de ta coupe."},
+        {text:"Une coupe + shampoing s'il vous plaît.",q:"ok",next:"s4b",r:"Parfait ! On commence par le shampoing. Vous voulez enlever combien ?"},
+        {text:"Je sais pas trop.",q:"warn",next:"s2d",r:"Vous avez une photo d'une coupe qui vous plaît ?",tip:"Mieux vaut avoir une idée de ce que tu veux avant d'aller chez le coiffeur."},
+      ]},
+    s2b:{other:"20 minutes d'attente, ça vous va ?",
+      choices:[
+        {text:"Oui bien sûr, je patiente.",q:"ok",next:"s3c",r:"Je reviens dans 20 minutes !"},
+        {text:"C'est long… vous pouvez pas faire plus vite ?",q:"bad",next:"s3c",r:"Non désolé, on a des clients avant vous.",tip:"Le coiffeur fait de son mieux. 20 minutes c'est raisonnable."},
+        {text:"Oui pas de problème, j'attends.",q:"ok",next:"s3c",r:"Merci ! Je reviens vite."},
+        {text:"Non j'ai pas le temps.",q:"ok",next:"s2b2",r:"On peut vous prendre demain matin si vous voulez."},
+      ]},
+    s2b2:{other:"On peut vous prendre demain matin ?",
+      choices:[
+        {text:"Oui demain à quelle heure ?",q:"ok",next:"s2b3",r:"9h ou 10h30 ?"},
+        {text:"Non j'en ai besoin aujourd'hui.",q:"warn",next:"s3c",r:"Alors attendez 20 minutes, c'est la seule option.",tip:"Si tu as besoin d'une coupe aujourd'hui, il faut attendre."},
+        {text:"Ok demain.",q:"ok",next:"s2b3",r:"9h ou 10h30 ?"},
+        {text:"Je reviendrai.",q:"warn",next:null,r:"",tip:"Prends un rendez-vous précis plutôt que de dire 'je reviendrai'."},
+      ]},
+    s2b3:{other:"9h ou 10h30 ?",
+      choices:[
+        {text:"9h s'il vous plaît.",q:"ok",next:"end2",r:"C'est noté ! À demain !"},
+        {text:"10h30.",q:"ok",next:"end2",r:"Parfait ! À demain 10h30 !"},
+        {text:"N'importe.",q:"warn",next:"end2",r:"Je mets 9h. À demain !",tip:"Choisis toi-même l'heure."},
+        {text:"Le plus tôt.",q:"ok",next:"end2",r:"9h alors ! À demain !"},
+      ]},
+    s2c:{other:"Vous voulez quel résultat au final ?",
+      choices:[
+        {text:"Les cheveux un peu plus courts et bien coiffés.",q:"ok",next:"s4",r:"On enlève combien ?"},
+        {text:"N'importe tant que c'est joli.",q:"bad",next:"s2d",r:"'Joli' c'est subjectif ! Vous avez une photo ?",tip:"Décris ce que tu veux précisément."},
+        {text:"Pareil qu'avant mais en mieux.",q:"warn",next:"s2d",r:"Vous avez une photo de comment c'était avant ?",tip:"Sois plus précis."},
+        {text:"Dégagé sur les côtés et plus long sur le dessus.",q:"ok",next:"s4c",r:"Un dégradé alors ! Quelle longueur sur le dessus ?"},
+      ]},
+    s2d:{other:"Vous avez une photo d'une coupe qui vous plaît ?",
+      choices:[
+        {text:"Oui j'en ai une sur mon téléphone !",q:"ok",next:"s4d",r:"Montrez-moi ! (regarde) Très bien, je vois ce que vous voulez."},
+        {text:"Non j'ai pas de photo.",q:"warn",next:"s2e",r:"Décrivez-moi ce que vous voulez avec des mots.",tip:"Avoir une photo c'est très utile chez le coiffeur."},
+        {text:"Oui là, comme le coiffeur à la télé.",q:"bad",next:"s2e",r:"Je ne regarde pas la télé ! Décrivez avec des mots.",tip:"Montre une photo ou décris avec des mots précis."},
+        {text:"Pas de photo mais je veux les cheveux mi-longs et dégradés.",q:"ok",next:"s4c",r:"Dégradé mi-long, très bien ! On garde les cheveux sur le cou ?"},
+      ]},
+    s2e:{other:"Décrivez avec des mots ce que vous voulez.",
+      choices:[
+        {text:"Courts sur les côtés, plus longs sur le dessus.",q:"ok",next:"s4c",r:"Un undercut ! Quelle longueur sur le dessus ?"},
+        {text:"Comme avant.",q:"bad",next:"s4",r:"Je vais faire de mon mieux ! On enlève combien ?",tip:"Le coiffeur ne sait pas comment tu étais avant."},
+        {text:"Mi-longs, dégradés, pas trop frisés.",q:"ok",next:"s4d2",r:"Très bien ! On commence ?"},
+        {text:"Je sais pas comment expliquer.",q:"warn",next:"s4",r:"D'accord, on enlève les pointes et on voit ?",tip:"Prépare une description ou une photo avant de venir."},
+      ]},
+    s3:{other:"Qu'est-ce qu'on fait aujourd'hui ?",
+      choices:[
+        {text:"Une coupe et shampoing s'il vous plaît.",q:"ok",next:"s4b",r:"Parfait. On enlève combien ?"},
+        {text:"Juste une coupe.",q:"ok",next:"s4",r:"On enlève combien ?"},
+        {text:"Je sais pas.",q:"warn",next:"s2d",r:"Vous avez une photo ?",tip:"Prépare ta demande avant d'arriver."},
+        {text:"Ce que vous voulez.",q:"bad",next:"s2c",r:"C'est vous qui décidez ! Vous voulez quoi ?",tip:"Le coiffeur a besoin de tes instructions."},
+      ]},
+    s3b:{other:"On ne propose pas de café. Qu'est-ce qu'on fait ?",
+      choices:[
+        {text:"Une coupe s'il vous plaît, raccourcir les pointes.",q:"ok",next:"s4",r:"On enlève combien ?"},
+        {text:"Pardon, une coupe et shampoing.",q:"ok",next:"s4b",r:"Bien ! On enlève combien ?"},
+        {text:"Juste une coupe.",q:"ok",next:"s4",r:"Combien on enlève ?"},
+        {text:"Dommage pour le café… une coupe.",q:"warn",next:"s4",r:"On enlève combien ?",tip:""},
+      ]},
+    s3c:{other:"(20 minutes plus tard) C'est à vous ! Qu'est-ce qu'on fait ?",
+      choices:[
+        {text:"Merci d'avoir attendu ! Je veux une coupe, raccourcir les pointes.",q:"ok",next:"s4",r:"On enlève combien ?"},
+        {text:"Une coupe courte s'il vous plaît.",q:"ok",next:"s4",r:"Combien on enlève ?"},
+        {text:"Enfin ! Une coupe.",q:"bad",next:"s4",r:"(Sourire crispé) On enlève combien ?",tip:"Ne sois pas impoli même si tu as attendu."},
+        {text:"Un shampoing et coupe.",q:"ok",next:"s4b",r:"Parfait. On enlève combien ?"},
+      ]},
+    s4:{other:"On enlève combien ? 2cm, 5cm, plus ?",
+      choices:[
+        {text:"5cm, pas plus.",q:"ok",next:"s5",r:"Très bien. On garde la même forme ?"},
+        {text:"Beaucoup.",q:"warn",next:"s4e",r:"'Beaucoup' c'est combien pour vous ? 5cm ? 10cm ?",tip:"Donne une mesure précise."},
+        {text:"2cm, juste les pointes.",q:"ok",next:"s5",r:"D'accord, les pointes seulement. On garde la forme ?"},
+        {text:"Je sais pas, vous décidez.",q:"bad",next:"s4e",r:"Je préfère que vous me donniez une indication.",tip:"Dis combien tu veux enlever."},
+      ]},
+    s4b:{other:"Shampoing d'abord. On enlève combien ensuite ?",
+      choices:[
+        {text:"5cm s'il vous plaît.",q:"ok",next:"s5",r:"Très bien !"},
+        {text:"Juste les pointes, 2cm.",q:"ok",next:"s5",r:"D'accord !"},
+        {text:"Beaucoup.",q:"warn",next:"s4e",r:"C'est combien pour vous ?",tip:"Donne une mesure précise."},
+        {text:"À vous de voir.",q:"bad",next:"s4e",r:"Je préfère votre avis.",tip:"Tu décides de ta coupe."},
+      ]},
+    s4c:{other:"On garde les cheveux sur le cou ?",
+      choices:[
+        {text:"Oui gardez un peu sur le cou.",q:"ok",next:"s5",r:"Parfait !"},
+        {text:"Non, dégagé dans le cou.",q:"ok",next:"s5",r:"D'accord, bien dégagé !"},
+        {text:"Peu importe.",q:"warn",next:"s5",r:"Je mets dégagé alors.",tip:"Tu décides de ta coupe."},
+        {text:"Comme vous voulez.",q:"bad",next:"s5",r:"Je garde sur le cou. Ça me semble mieux.",tip:"Dis ce que TU veux."},
+      ]},
+    s4d:{other:"Très bonne photo ! On commence ?",
+      choices:[
+        {text:"Oui s'il vous plaît !",q:"ok",next:"s5",r:"Parfait, je commence !"},
+        {text:"Oui, et vous pensez que ça ira bien ?",q:"ok",next:"s4d3",r:"Absolument, votre type de cheveux s'y prête bien !"},
+        {text:"Oui, mais gardez la longueur.",q:"ok",next:"s5",r:"D'accord, longueur préservée !"},
+        {text:"Je sais pas, c'est beaucoup de changement.",q:"warn",next:"s4d3",r:"On peut faire une version plus douce si vous préférez ?",tip:"Dis clairement si tu hésites."},
+      ]},
+    s4d2:{other:"On commence ?",
+      choices:[
+        {text:"Oui s'il vous plaît !",q:"ok",next:"s5",r:"C'est parti !"},
+        {text:"Oui mais doucement !",q:"warn",next:"s5",r:"Toujours ! C'est parti.",tip:"'Doucement' n'est pas nécessaire à dire à un coiffeur professionnel."},
+        {text:"Oui merci !",q:"ok",next:"s5",r:"On y va !"},
+        {text:"Attendez, j'ai changé d'avis.",q:"warn",next:"s2d",r:"Pas de problème ! Vous voulez quoi alors ?",tip:"Décide avant de t'asseoir dans le fauteuil."},
+      ]},
+    s4d3:{other:"Votre type de cheveux s'y prête bien !",
+      choices:[
+        {text:"Super, alors on y va !",q:"ok",next:"s5",r:"C'est parti !"},
+        {text:"Merci, ça me rassure.",q:"ok",next:"s5",r:"On commence !"},
+        {text:"Vous êtes sûr ?",q:"warn",next:"s5",r:"Oui, faites-moi confiance ! On y va.",tip:""},
+        {text:"D'accord.",q:"ok",next:"s5",r:"C'est parti !"},
+      ]},
+    s4e:{other:"C'est combien pour vous ?",
+      choices:[
+        {text:"5 ou 6cm.",q:"ok",next:"s5",r:"D'accord !"},
+        {text:"Je sais pas.",q:"bad",next:"s5",r:"Je mets 5cm, on voit et on ajuste.",tip:"Essaie de donner une mesure même approximative."},
+        {text:"10cm.",q:"ok",next:"s5",r:"Ça fait un changement ! On y va."},
+        {text:"Plus ou moins.",q:"warn",next:"s5",r:"Je mets 5cm.",tip:"Donne une mesure précise."},
+      ]},
+    s5:{other:"(Après la coupe) Voilà ! Qu'est-ce que vous en pensez ?",
+      choices:[
+        {text:"C'est parfait, merci beaucoup !",q:"ok",next:"end",r:"Avec plaisir ! Ça vous va vraiment bien."},
+        {text:"C'est bien mais un peu court sur le côté gauche.",q:"ok",next:"s5b",r:"Je rectifie ça tout de suite !"},
+        {text:"C'est pas terrible.",q:"warn",next:"s5c",r:"Qu'est-ce qui ne vous convient pas ?",tip:"Sois précis sur ce qui ne va pas pour que le coiffeur puisse corriger."},
+        {text:"C'est raté.",q:"bad",next:"s5c",r:"Oh… qu'est-ce qui ne vous plaît pas exactement ?",tip:"Sois précis et poli même si tu n'es pas satisfait."},
+      ]},
+    s5b:{other:"Je rectifie tout de suite !",
+      choices:[
+        {text:"Merci, c'est parfait maintenant !",q:"ok",next:"end",r:"Avec plaisir !"},
+        {text:"Super merci.",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Et l'autre côté aussi.",q:"ok",next:"s5d",r:"Je regarde… oui je rectifie !"},
+        {text:"Finalement c'était bien avant.",q:"bad",next:"end",r:"D'accord… je peux pas remettre les cheveux.",tip:"Dis ce qui ne va pas avant que le coiffeur corrige."},
+      ]},
+    s5c:{other:"Qu'est-ce qui ne vous plaît pas ?",
+      choices:[
+        {text:"C'est trop court sur les côtés.",q:"ok",next:"s5e",r:"Je comprends. Malheureusement je ne peux pas rallonger les cheveux."},
+        {text:"Tout.",q:"bad",next:"s5e",r:"Pouvez-vous préciser ce qui ne va pas ?",tip:"Sois précis pour que le coiffeur puisse corriger si possible."},
+        {text:"En fait c'est bien, j'avais peur mais c'est ok.",q:"ok",next:"end",r:"Ouf ! Ça vous va très bien !"},
+        {text:"Le dessus est pas assez dégradé.",q:"ok",next:"s5b",r:"Je peux rectifier ça !"},
+      ]},
+    s5d:{other:"Je rectifie les deux côtés !",
+      choices:[
+        {text:"Parfait, merci !",q:"ok",next:"end",r:"Voilà ! Bonne journée !"},
+        {text:"Super merci beaucoup !",q:"ok",next:"end",r:"Avec plaisir !"},
+        {text:"C'est mieux.",q:"warn",next:"end",r:"Bonne journée !",tip:""},
+        {text:"Et le dessus aussi.",q:"warn",next:"s5",r:"Le dessus… ok regardons.",tip:"Dis toutes tes demandes d'un coup."},
+      ]},
+    s5e:{other:"Je ne peux pas rallonger les cheveux.",
+      choices:[
+        {text:"Je comprends, merci quand même.",q:"ok",next:"end",r:"Désolé ! Bonne journée."},
+        {text:"C'est votre faute !",q:"bad",next:"end",r:"J'ai suivi votre demande.",tip:"Le coiffeur a suivi tes instructions. Sois poli."},
+        {text:"D'accord, la prochaine fois je préciserai mieux.",q:"ok",next:"end",r:"Exactement ! À bientôt."},
+        {text:"Bon tant pis.",q:"warn",next:"end",r:"Désolé. Bonne journée.",tip:""},
+      ]},
+    end:{other:"Merci, bonne journée !",
+      choices:[
+        {text:"Merci, bonne journée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Merci, à bientôt !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"'Merci bonne journée' c'est plus sympa."},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours dire merci et au revoir."},
+      ]},
+    end2:{other:"À demain !",
+      choices:[
+        {text:"À demain, merci !",q:"ok",next:null,r:""},
+        {text:"Merci, à demain !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Bye.",q:"warn",next:null,r:"",tip:"'À demain merci' c'est plus poli."},
+      ]},
+  }
+},
+,
+{
+  id:"poste",icon:"📮",name:"À la Poste",who:"Agent La Poste",ctx:"Tu vas envoyer un colis ou un courrier",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonjour, c'est à vous ! Je peux vous aider ?",
+      choices:[
+        {text:"Bonjour ! Je voudrais envoyer ce colis s'il vous plaît.",q:"ok",next:"s2",r:"Très bien. C'est pour quelle destination ?"},
+        {text:"Bonjour, j'ai une lettre recommandée à envoyer.",q:"ok",next:"s2b",r:"Avec ou sans accusé de réception ?"},
+        {text:"Euh ouais j'ai un truc à envoyer.",q:"bad",next:"s2c",r:"Un colis, une lettre ?",tip:"Sois plus précis et poli. Dis bonjour."},
+        {text:"Bonjour, j'attends un colis, il est arrivé ?",q:"warn",next:"s2d",r:"Votre nom s'il vous plaît ?",tip:"Commence par expliquer ce que tu veux faire."},
+      ]},
+    s2:{other:"C'est pour quelle destination ?",
+      choices:[
+        {text:"En France, à Paris.",q:"ok",next:"s3",r:"Le colis fait quel poids environ ?"},
+        {text:"À l'étranger, en Espagne.",q:"ok",next:"s3b",r:"Colissimo international. Le poids ?"},
+        {text:"Je sais pas.",q:"bad",next:"s2e",r:"Vous avez l'adresse du destinataire ?",tip:"Il faut savoir où tu envoies ton colis."},
+        {text:"Chez ma sœur.",q:"warn",next:"s2e",r:"Et elle habite où ?",tip:"Donne une ville ou un pays, pas juste 'chez quelqu'un'."},
+      ]},
+    s2b:{other:"Avec ou sans accusé de réception ?",
+      choices:[
+        {text:"Avec accusé de réception s'il vous plaît.",q:"ok",next:"s4",r:"D'accord. Le destinataire c'est qui ?"},
+        {text:"Sans.",q:"ok",next:"s4",r:"Très bien. Le destinataire ?"},
+        {text:"C'est quoi la différence ?",q:"ok",next:"s2b2",r:"Avec accusé : vous recevez une preuve de réception. Sans : juste l'envoi suivi."},
+        {text:"Je sais pas.",q:"warn",next:"s2b2",r:"Avec accusé de réception vous avez une preuve. Sans, c'est moins cher.",tip:"Renseigne-toi sur les options avant d'aller à la Poste."},
+      ]},
+    s2b2:{other:"Avec accusé = preuve de réception. Sans = moins cher.",
+      choices:[
+        {text:"Avec accusé de réception alors, c'est important.",q:"ok",next:"s4",r:"D'accord. Le destinataire ?"},
+        {text:"Sans, pour économiser.",q:"ok",next:"s4",r:"Très bien. Le destinataire ?"},
+        {text:"Comme vous voulez.",q:"bad",next:"s4",r:"Je mets avec accusé, c'est plus sûr.",tip:"C'est toi qui décides."},
+        {text:"Le moins cher.",q:"warn",next:"s4",r:"Sans accusé alors. Le destinataire ?",tip:""},
+      ]},
+    s2c:{other:"Un colis ou une lettre ?",
+      choices:[
+        {text:"Un colis s'il vous plaît.",q:"ok",next:"s2",r:"Pour quelle destination ?"},
+        {text:"Une lettre recommandée.",q:"ok",next:"s2b",r:"Avec accusé de réception ?"},
+        {text:"Les deux.",q:"warn",next:"s2f",r:"On fait un à la fois. On commence par quoi ?",tip:"Dis ce que tu veux envoyer clairement."},
+        {text:"Je sais pas vraiment.",q:"bad",next:"s2g",r:"Qu'est-ce que vous avez à envoyer concrètement ?",tip:"Sache ce que tu veux faire avant de venir à la Poste."},
+      ]},
+    s2d:{other:"Votre nom pour vérifier si un colis vous attend.",
+      choices:[
+        {text:"C'est [Prénom Nom].",q:"ok",next:"s2h",r:"(vérifie) Oui il y a un colis pour vous ! Votre pièce d'identité ?"},
+        {text:"[Prénom Nom].",q:"ok",next:"s2h",r:"Je vérifie… oui un colis vous attend ! Pièce d'identité ?"},
+        {text:"Pourquoi vous avez besoin de mon nom ?",q:"bad",next:"s2d2",r:"Pour vérifier si un colis vous est destiné.",tip:"Le nom est indispensable pour récupérer un colis."},
+        {text:"C'est [Prénom].",q:"warn",next:"s2d2",r:"Prénom et nom s'il vous plaît.",tip:"Donne prénom ET nom."},
+      ]},
+    s2d2:{other:"Prénom ET nom s'il vous plaît.",
+      choices:[
+        {text:"[Prénom Nom].",q:"ok",next:"s2h",r:"Je vérifie… oui un colis vous attend !"},
+        {text:"Pourquoi vous insistez ?",q:"bad",next:"s2h",r:"Pour vous remettre le bon colis. [Prénom Nom] ?",tip:"C'est normal d'identifier le destinataire."},
+        {text:"C'est [Prénom Nom], pardon.",q:"ok",next:"s2h",r:"Voilà un colis pour vous !"},
+        {text:"[Prénom Nom].",q:"ok",next:"s2h",r:"Un colis vous attend !"},
+      ]},
+    s2e:{other:"Vous avez l'adresse du destinataire ?",
+      choices:[
+        {text:"Oui, c'est le 5 rue Victor Hugo, 75001 Paris.",q:"ok",next:"s3",r:"Paris, parfait. Le poids du colis ?"},
+        {text:"Non je l'ai pas sur moi.",q:"bad",next:"s2e2",r:"Sans adresse je ne peux pas envoyer le colis.",tip:"Il faut toujours avoir l'adresse avant d'aller à la Poste."},
+        {text:"Oui la voilà (tu montres).",q:"ok",next:"s3",r:"D'accord ! Le poids ?"},
+        {text:"Je crois que c'est à Bordeaux.",q:"warn",next:"s2e2",r:"Il me faut l'adresse complète : numéro, rue, code postal.",tip:"Il faut l'adresse complète."},
+      ]},
+    s2e2:{other:"Il me faut l'adresse complète.",
+      choices:[
+        {text:"Je l'ai sur mon téléphone, attendez.",q:"ok",next:"s3",r:"Pas de souci, prenez votre temps."},
+        {text:"Je reviens quand j'aurai l'adresse.",q:"ok",next:null,r:"",tip:""},
+        {text:"Vous pouvez envoyer sans adresse ?",q:"bad",next:null,r:"Non, impossible.",tip:"On ne peut pas envoyer un colis sans adresse."},
+        {text:"Je note l'adresse et je reviens.",q:"ok",next:null,r:"À bientôt !",tip:""},
+      ]},
+    s2f:{other:"On commence par quoi ?",
+      choices:[
+        {text:"Le colis d'abord.",q:"ok",next:"s2",r:"Pour quelle destination ?"},
+        {text:"La lettre recommandée.",q:"ok",next:"s2b",r:"Avec accusé ?"},
+        {text:"Peu importe.",q:"warn",next:"s2",r:"Le colis alors. Destination ?",tip:"Décide toi-même de l'ordre."},
+        {text:"N'importe.",q:"warn",next:"s2",r:"On fait le colis. Destination ?",tip:""},
+      ]},
+    s2g:{other:"Qu'est-ce que vous avez concrètement à envoyer ?",
+      choices:[
+        {text:"J'ai ce colis et une lettre recommandée.",q:"ok",next:"s2f",r:"On fait un à la fois. On commence par quoi ?"},
+        {text:"Un paquet.",q:"ok",next:"s2",r:"Destination ?"},
+        {text:"Des affaires.",q:"bad",next:"s2",r:"Un colis alors. Destination ?",tip:"Dis clairement ce que tu envoies."},
+        {text:"Une lettre.",q:"ok",next:"s2b",r:"Recommandée ou normale ?"},
+      ]},
+    s2h:{other:"Votre pièce d'identité pour récupérer le colis.",
+      choices:[
+        {text:"La voilà, ma carte d'identité.",q:"ok",next:"end",r:"Parfait ! Voici votre colis. Signez ici."},
+        {text:"J'ai mon permis, ça marche ?",q:"ok",next:"end",r:"Oui ça marche ! Signez ici."},
+        {text:"Je l'ai pas sur moi.",q:"bad",next:"s2h2",r:"Sans pièce d'identité je ne peux pas vous remettre le colis.",tip:"Toujours avoir une pièce d'identité sur soi."},
+        {text:"J'ai mon téléphone avec ma photo.",q:"bad",next:"s2h2",r:"Il me faut une vraie pièce d'identité, pas une photo.",tip:"Un téléphone avec une photo n'est pas une pièce d'identité valide."},
+      ]},
+    s2h2:{other:"Je ne peux pas donner le colis sans pièce d'identité.",
+      choices:[
+        {text:"D'accord, je reviens avec ma carte.",q:"ok",next:null,r:"D'accord. Le colis reste ici 15 jours.",tip:""},
+        {text:"Mais c'est bien mon colis !",q:"bad",next:null,r:"Je comprends mais c'est la règle.",tip:"La pièce d'identité est obligatoire pour récupérer un colis."},
+        {text:"Je peux avoir une dérogation ?",q:"warn",next:null,r:"Non, c'est obligatoire.",tip:""},
+        {text:"Combien de temps vous gardez le colis ?",q:"ok",next:"s2h3",r:"15 jours avant retour à l'expéditeur."},
+      ]},
+    s2h3:{other:"15 jours avant retour à l'expéditeur.",
+      choices:[
+        {text:"D'accord, je reviens demain avec ma carte.",q:"ok",next:null,r:"À demain !"},
+        {text:"Ok merci.",q:"ok",next:null,r:"À bientôt !"},
+        {text:"Merci pour l'info.",q:"ok",next:null,r:"À bientôt !"},
+        {text:"C'est court.",q:"warn",next:null,r:"C'est la règle de La Poste, désolé.",tip:""},
+      ]},
+    s3:{other:"Le colis fait quel poids environ ?",
+      choices:[
+        {text:"Environ 1kg je pense.",q:"ok",next:"s4",r:"Je le pèse… 950g. Je vous propose Colissimo à 6,90€."},
+        {text:"Je sais pas.",q:"warn",next:"s3c",r:"Je vais le peser. (Pesée) C'est 1,2kg."},
+        {text:"Pas lourd.",q:"bad",next:"s3c",r:"Je le pèse pour être précis. (Pesée) 800g.",tip:"'Pas lourd' n'est pas une mesure. On pèse toujours les colis."},
+        {text:"2 ou 3 kg.",q:"ok",next:"s3c",r:"Je le pèse. (Pesée) 2,3kg, Colissimo à 9,90€."},
+      ]},
+    s3b:{other:"Le poids du colis pour l'Espagne ?",
+      choices:[
+        {text:"Environ 500g.",q:"ok",next:"s4",r:"Colissimo International à 14,50€."},
+        {text:"Je sais pas.",q:"warn",next:"s3c",r:"Je le pèse. (Pesée) 600g."},
+        {text:"Léger.",q:"bad",next:"s3c",r:"Je le pèse. (Pesée) 450g.",tip:"Donne une estimation en grammes ou kilos."},
+        {text:"1kg environ.",q:"ok",next:"s4",r:"(Pesée) 980g. Colissimo International à 17€."},
+      ]},
+    s3c:{other:"(Pesée) Voilà le prix affiché.",
+      choices:[
+        {text:"D'accord, je prends cette option.",q:"ok",next:"s4",r:"Le destinataire et l'adresse ?"},
+        {text:"C'est cher !",q:"warn",next:"s3d",r:"On a des options moins chères mais plus lentes."},
+        {text:"Ok.",q:"ok",next:"s4",r:"L'adresse du destinataire ?"},
+        {text:"Vous avez moins cher ?",q:"ok",next:"s3d",r:"Lettre suivie moins chère mais délai plus long."},
+      ]},
+    s3d:{other:"Option moins chère : lettre suivie, délai 3-5 jours.",
+      choices:[
+        {text:"Non, je préfère Colissimo, c'est plus rapide.",q:"ok",next:"s4",r:"D'accord ! L'adresse du destinataire ?"},
+        {text:"Ok la lettre suivie.",q:"ok",next:"s4",r:"Très bien. L'adresse ?"},
+        {text:"Je prendrai le moins cher.",q:"ok",next:"s4",r:"La lettre suivie. L'adresse ?"},
+        {text:"Je sais pas.",q:"bad",next:"s4",r:"Je mets Colissimo standard. L'adresse ?",tip:"Décide du mode d'envoi selon ton budget et l'urgence."},
+      ]},
+    s4:{other:"L'adresse complète du destinataire ?",
+      choices:[
+        {text:"C'est le 5 rue Victor Hugo, 75001 Paris, Madame Dupont.",q:"ok",next:"s5",r:"Je remplis l'étiquette. Vous souhaitez une assurance ?"},
+        {text:"Je l'ai notée là.",q:"ok",next:"s5",r:"(Lit l'adresse) Très bien ! Assurance ?"},
+        {text:"Je sais plus par cœur.",q:"warn",next:"s4b",r:"Vous l'avez sur votre téléphone ?",tip:"Note toujours l'adresse avant d'aller à la Poste."},
+        {text:"Je vous l'envoie par SMS.",q:"bad",next:"s4b",r:"Je ne reçois pas de SMS. Vous l'avez sur vous ?",tip:"Apporte l'adresse écrite ou sur ton téléphone."},
+      ]},
+    s4b:{other:"Vous l'avez sur votre téléphone ?",
+      choices:[
+        {text:"Oui, la voilà.",q:"ok",next:"s5",r:"Parfait, je recopie. Assurance ?"},
+        {text:"Non je l'ai pas.",q:"bad",next:"s4c",r:"Sans adresse je ne peux pas envoyer le colis.",tip:"Il faut l'adresse pour envoyer un colis."},
+        {text:"Je la cherche… la voilà.",q:"ok",next:"s5",r:"Je recopie. Assurance ?"},
+        {text:"Je reviens avec l'adresse.",q:"ok",next:null,r:"À bientôt !",tip:""},
+      ]},
+    s4c:{other:"Sans adresse impossible d'envoyer.",
+      choices:[
+        {text:"D'accord, je reviens demain avec l'adresse.",q:"ok",next:null,r:"À demain !"},
+        {text:"Ok merci.",q:"warn",next:null,r:"À bientôt !",tip:""},
+        {text:"Vous pouvez pas trouver l'adresse ?",q:"bad",next:null,r:"Non, c'est à vous de la fournir.",tip:"C'est à toi de connaître l'adresse du destinataire."},
+        {text:"Je vais appeler mon contact pour l'adresse.",q:"ok",next:null,r:"D'accord, revenez quand vous avez l'adresse.",tip:""},
+      ]},
+    s5:{other:"Vous souhaitez une assurance pour le colis ?",
+      choices:[
+        {text:"Non merci, c'est pas nécessaire.",q:"ok",next:"end",r:"D'accord. Ça fait (montant)€. Comment vous payez ?"},
+        {text:"Oui, le contenu vaut environ 50€.",q:"ok",next:"end",r:"Assurance 50€ ajoutée. Total à (montant)€."},
+        {text:"C'est quoi l'assurance ?",q:"ok",next:"s5b",r:"Si le colis est perdu ou endommagé, vous êtes remboursé."},
+        {text:"C'est obligatoire ?",q:"ok",next:"s5c",r:"Non c'est facultatif. Ça coûte 1€ de plus."},
+      ]},
+    s5b:{other:"Si perdu ou endommagé, vous êtes remboursé.",
+      choices:[
+        {text:"Oui alors je prends l'assurance.",q:"ok",next:"end",r:"Parfait ! Ça fait (montant)€."},
+        {text:"Non merci, c'est du solide.",q:"ok",next:"end",r:"D'accord ! (Montant)€."},
+        {text:"Je sais pas.",q:"warn",next:"end",r:"Je mets sans assurance. (Montant)€.",tip:"Décide selon la valeur du contenu."},
+        {text:"Oui si c'est pas cher.",q:"ok",next:"end",r:"1€ de plus. (Montant)€."},
+      ]},
+    s5c:{other:"L'assurance coûte 1€ de plus.",
+      choices:[
+        {text:"Non merci.",q:"ok",next:"end",r:"D'accord. (Montant)€."},
+        {text:"Oui je la prends.",q:"ok",next:"end",r:"Parfait ! (Montant)€."},
+        {text:"Peu importe.",q:"bad",next:"end",r:"Je mets sans. (Montant)€.",tip:"Tu décides selon la valeur du colis."},
+        {text:"Non c'est bon.",q:"ok",next:"end",r:"(Montant)€."},
+      ]},
+    end:{other:"Voilà votre reçu et le numéro de suivi. Bonne journée !",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci, je garde bien le reçu.",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un 'merci bonne journée' c'est plus sympa."},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Dis toujours merci et au revoir."},
+      ]},
+  }
+},
+{
+  id:"voisin",icon:"🏠",name:"Demander de l'aide à un voisin",who:"Ton voisin(e)",ctx:"Tu as besoin d'un service",
+  start:"s1",
+  steps:{
+    s1:{other:"(Tu sonnes chez ton voisin) Oui ?",
+      choices:[
+        {text:"Bonjour ! Je suis votre voisin du dessus, je m'appelle [Prénom].",q:"ok",next:"s2",r:"Ah bonjour ! Je peux faire quelque chose pour vous ?"},
+        {text:"C'est moi.",q:"bad",next:"s1b",r:"Euh… je vous connais ?",tip:"Le voisin ne sait pas forcément qui tu es. Présente-toi."},
+        {text:"Bonjour, excusez-moi de vous déranger.",q:"ok",next:"s2b",r:"Bonjour ! Pas de souci, qu'est-ce qui se passe ?"},
+        {text:"(Tu ne dis rien et attends qu'il parle)",q:"bad",next:"s1b",r:"Je peux vous aider ?",tip:"Présente-toi et explique pourquoi tu sonnes."},
+      ]},
+    s1b:{other:"Je vous connais ?",
+      choices:[
+        {text:"Bonjour pardon ! Je suis [Prénom], votre voisin du dessus.",q:"ok",next:"s2",r:"Ah oui bien sûr ! Qu'est-ce qui se passe ?"},
+        {text:"On est voisins.",q:"warn",next:"s2c",r:"Ah d'accord ! Je peux vous aider ?",tip:"Donne ton prénom pour te présenter clairement."},
+        {text:"Non mais j'ai besoin d'aide.",q:"bad",next:"s2c",r:"D'accord… qu'est-ce qui se passe ?",tip:"Présente-toi avant de demander quoi que ce soit."},
+        {text:"Je m'appelle [Prénom], j'habite au dessus.",q:"ok",next:"s2",r:"Ah bonjour ! Je peux vous aider ?"},
+      ]},
+    s2:{other:"Je peux faire quelque chose pour vous ?",
+      choices:[
+        {text:"Oui, je suis désolé de vous déranger. J'ai besoin d'emprunter un outil.",q:"ok",next:"s3",r:"Pas de problème ! Quel outil ?"},
+        {text:"Mon robinet fuit, vous savez comment couper l'eau ?",q:"ok",next:"s3b",r:"Oui bien sûr ! Je vous explique."},
+        {text:"Ouais j'ai besoin d'un truc.",q:"bad",next:"s3c",r:"Quel truc ?",tip:"Explique clairement ce dont tu as besoin."},
+        {text:"Vous pouvez m'aider s'il vous plaît ?",q:"ok",next:"s3c",r:"Je vais essayer. C'est pour quoi ?"},
+      ]},
+    s2b:{other:"Qu'est-ce qui se passe ?",
+      choices:[
+        {text:"Mon robinet fuit et je sais pas comment couper l'eau.",q:"ok",next:"s3b",r:"Pas de panique ! Je vous explique."},
+        {text:"J'ai besoin d'emprunter un outil si possible.",q:"ok",next:"s3",r:"Bien sûr ! Lequel ?"},
+        {text:"Rien de grave, j'avais juste une question.",q:"warn",next:"s3c",r:"Allez-y !",tip:"Dis directement ce que tu veux."},
+        {text:"Vous pouvez me rendre un service ?",q:"ok",next:"s3c",r:"Ça dépend lequel ! Qu'est-ce que c'est ?"},
+      ]},
+    s2c:{other:"Je peux vous aider, c'est pour quoi ?",
+      choices:[
+        {text:"Je voudrais emprunter une perceuse si vous en avez une.",q:"ok",next:"s3",r:"Oui j'en ai une ! Elle est dans mon garage."},
+        {text:"J'ai un problème de fuite d'eau.",q:"ok",next:"s3b",r:"Ah ! Je connais bien ça. Je vous aide."},
+        {text:"Un truc de rien du tout.",q:"bad",next:"s3c",r:"Allez-y, dites-moi.",tip:"Explique clairement ce dont tu as besoin."},
+        {text:"Vous pouvez garder mon chien 2h ?",q:"ok",next:"s3d",r:"Ah… j'ai pas trop l'habitude des chiens."},
+      ]},
+    s3:{other:"Quel outil vous cherchez ?",
+      choices:[
+        {text:"Une perceuse s'il vous plaît, pour accrocher un tableau.",q:"ok",next:"s4",r:"Bien sûr ! Je vous la prête volontiers."},
+        {text:"Un marteau.",q:"ok",next:"s4",r:"Oui j'en ai un ! Je vous le cherche."},
+        {text:"Je sais pas trop, quelque chose pour visser.",q:"warn",next:"s3e",r:"Un tournevis ou une visseuse électrique ?",tip:"Sache quel outil tu cherches avant de demander."},
+        {text:"Une visseuse électrique.",q:"ok",next:"s4",r:"Oui je peux vous la prêter. Vous savez l'utiliser ?"},
+      ]},
+    s3b:{other:"Je vous explique comment couper l'eau.",
+      choices:[
+        {text:"Oui s'il vous plaît, j'écoute bien.",q:"ok",next:"s4b",r:"Le robinet d'arrêt est sous l'évier, tournez-le vers la droite."},
+        {text:"Merci ! Vous pouvez venir voir ?",q:"ok",next:"s4c",r:"Oui je viens regarder."},
+        {text:"C'est urgent, y'a de l'eau partout.",q:"ok",next:"s4c",r:"J'arrive tout de suite !"},
+        {text:"Je comprends pas trop les tuyaux.",q:"ok",next:"s4c",r:"Je viens vous montrer directement."},
+      ]},
+    s3c:{other:"C'est pour quoi exactement ?",
+      choices:[
+        {text:"J'ai besoin d'emprunter du sel, je n'en ai plus.",q:"ok",next:"s4d",r:"Ah oui bien sûr ! Combien il vous en faut ?"},
+        {text:"Vous pouvez recevoir un colis pour moi demain ?",q:"ok",next:"s4e",r:"Demain… je suis là le matin. Ça arrive à quelle heure ?"},
+        {text:"J'ai besoin d'aide pour déplacer un meuble.",q:"ok",next:"s4f",r:"Un meuble lourd ? Je suis pas très costaud !"},
+        {text:"Peu importe.",q:"bad",next:"s4d",r:"Je vous donne du sel si ça peut aider.",tip:"Explique clairement ce dont tu as besoin."},
+      ]},
+    s3d:{other:"J'ai pas l'habitude des chiens.",
+      choices:[
+        {text:"Je comprends. Il est très calme je vous assure.",q:"ok",next:"s3f",r:"Il est grand ou petit ?"},
+        {text:"Pas de souci, je comprends.",q:"ok",next:"end",r:"Pas de problème ! Bonne journée."},
+        {text:"C'est pas grave, quelqu'un d'autre peut le garder.",q:"ok",next:"end",r:"Désolé ! Bonne journée."},
+        {text:"Allez s'il vous plaît !",q:"bad",next:"end",r:"Non vraiment, je préfère pas.",tip:"Respecte le refus de ton voisin. Ne fais pas pression."},
+      ]},
+    s3e:{other:"Tournevis ou visseuse électrique ?",
+      choices:[
+        {text:"Un tournevis suffit.",q:"ok",next:"s4",r:"Bien sûr ! Je vous l'apporte."},
+        {text:"Une visseuse électrique si vous en avez.",q:"ok",next:"s4",r:"Oui j'en ai une, je vous la prête."},
+        {text:"Je sais pas la différence.",q:"warn",next:"s3e2",r:"Tournevis = à la main. Visseuse = électrique, plus rapide."},
+        {text:"Peu importe lequel.",q:"bad",next:"s4",r:"Je mets un tournevis alors.",tip:"Sache quel outil tu veux."},
+      ]},
+    s3e2:{other:"Tournevis = à la main. Visseuse = électrique.",
+      choices:[
+        {text:"La visseuse électrique alors, merci.",q:"ok",next:"s4",r:"Je vous la prête !"},
+        {text:"Le tournevis ça ira.",q:"ok",next:"s4",r:"D'accord !"},
+        {text:"Je sais toujours pas.",q:"bad",next:"s4",r:"Je vous mets les deux alors.",tip:"Décide quel outil tu veux."},
+        {text:"La visseuse c'est mieux.",q:"ok",next:"s4",r:"D'accord !"},
+      ]},
+    s3f:{other:"Il est grand ou petit le chien ?",
+      choices:[
+        {text:"Petit, c'est un chihuahua très calme.",q:"ok",next:"s4g",r:"Bon d'accord pour 2h. Vous partez quand ?"},
+        {text:"Grand mais adorable.",q:"warn",next:"s4g2",r:"Grand… je sais pas si j'ai la place.",tip:"Un grand chien c'est plus difficile à garder."},
+        {text:"Moyen.",q:"ok",next:"s4g",r:"Ok, 2h c'est gérable. Vous partez quand ?"},
+        {text:"Il mord pas !",q:"bad",next:"s4g",r:"Je l'espère ! 2h ok, vous partez quand ?",tip:"Ça ne répond pas à la question. Dis la taille."},
+      ]},
+    s4:{other:"Je vous prête l'outil. Vous me le rendez quand ?",
+      choices:[
+        {text:"Ce soir ou demain matin, merci beaucoup !",q:"ok",next:"end",r:"Pas de problème ! Bonne installation."},
+        {text:"Dans la journée, merci.",q:"ok",next:"end",r:"Parfait ! Bonne journée."},
+        {text:"Quand j'ai fini.",q:"warn",next:"s4h",r:"Ce sera dans combien de temps ?",tip:"Donne une heure précise pour rassurer ton voisin."},
+        {text:"Je sais pas.",q:"bad",next:"s4h",r:"Je préfère qu'on fixe une heure.",tip:"Donne un délai précis quand tu empruntes quelque chose."},
+      ]},
+    s4b:{other:"Robinet d'arrêt sous l'évier, tournez à droite.",
+      choices:[
+        {text:"Merci, j'essaie tout de suite !",q:"ok",next:"end",r:"N'hésitez pas si vous avez un problème."},
+        {text:"Et si ça marche pas ?",q:"ok",next:"s4b2",r:"Revenez me voir, on trouvera une solution."},
+        {text:"Ok.",q:"warn",next:"end",r:"Bonne chance !",tip:"Un 'merci' c'est mieux."},
+        {text:"Je comprends pas bien.",q:"ok",next:"s3b",r:"Je viens vous montrer directement."},
+      ]},
+    s4b2:{other:"Revenez me voir si ça marche pas.",
+      choices:[
+        {text:"Merci beaucoup pour votre aide !",q:"ok",next:"end",r:"De rien ! À bientôt."},
+        {text:"Merci, vous êtes vraiment sympa.",q:"ok",next:"end",r:"C'est normal entre voisins !"},
+        {text:"Ok.",q:"warn",next:"end",r:"Bonne chance.",tip:""},
+        {text:"Merci.",q:"ok",next:"end",r:"De rien !"},
+      ]},
+    s4c:{other:"Je viens voir la fuite.",
+      choices:[
+        {text:"Merci beaucoup, c'est très gentil !",q:"ok",next:"end",r:"Entre voisins c'est normal ! On y va."},
+        {text:"Merci, j'apprécie vraiment.",q:"ok",next:"end",r:"Allons voir ça."},
+        {text:"Merci.",q:"ok",next:"end",r:"C'est parti !"},
+        {text:"Dépêchez-vous !",q:"bad",next:"end",r:"Je fais vite !",tip:"Même en urgence, dis merci."},
+      ]},
+    s4d:{other:"Du sel, combien il vous en faut ?",
+      choices:[
+        {text:"Une cuillère à soupe suffit, merci beaucoup !",q:"ok",next:"end",r:"Pas de souci ! Je vous en donne plus au cas où."},
+        {text:"Un peu.",q:"warn",next:"end",r:"Voilà ! De rien.",tip:"Donne une quantité précise."},
+        {text:"Je sais pas.",q:"warn",next:"end",r:"Je vous en donne une poignée.",tip:""},
+        {text:"Merci, autant que vous pouvez.",q:"warn",next:"end",r:"Voilà 100g !",tip:"Dis une quantité précise."},
+      ]},
+    s4e:{other:"Le colis arrive à quelle heure ?",
+      choices:[
+        {text:"Entre 10h et 12h, je serai absent toute la journée.",q:"ok",next:"s4e2",r:"Je suis là le matin. Je le prends !"},
+        {text:"Je sais pas exactement.",q:"warn",next:"s4e2",r:"Le matin je suis là. Si c'est l'après-midi je peux pas.",tip:"Donne une plage horaire si tu la connais."},
+        {text:"Ils disent pas l'heure.",q:"ok",next:"s4e2",r:"Je reste à la maison le matin. Après-midi je peux pas."},
+        {text:"Le matin probablement.",q:"ok",next:"s4e2",r:"Très bien, je le prends !"},
+      ]},
+    s4e2:{other:"Je le prends ! Vous revenez quand ?",
+      choices:[
+        {text:"Ce soir vers 18h, je passerai le récupérer. Merci !",q:"ok",next:"end",r:"Parfait ! À ce soir."},
+        {text:"Dans la soirée. Merci vraiment !",q:"ok",next:"end",r:"Pas de souci ! À ce soir."},
+        {text:"Je sais pas encore.",q:"warn",next:"end",r:"Pas trop tard quand même !",tip:"Donne une heure approximative."},
+        {text:"Merci beaucoup !",q:"ok",next:"end",r:"De rien ! À ce soir."},
+      ]},
+    s4f:{other:"Un meuble lourd ? Je suis pas très costaud !",
+      choices:[
+        {text:"C'est une armoire, mais on sera deux à la porter.",q:"ok",next:"s4f2",r:"Ah si on est deux ça devrait aller !"},
+        {text:"Pas de souci, je trouverai quelqu'un d'autre.",q:"ok",next:"end",r:"Désolé de pas pouvoir aider davantage !"},
+        {text:"C'est pas si lourd.",q:"warn",next:"s4f2",r:"Disons que j'essaie. C'est quoi le meuble ?",tip:"Donne plus d'informations sur le meuble."},
+        {text:"Vous êtes fort en fait !",q:"bad",next:"end",r:"Ha ha, pas tant que ça !",tip:"Ne force pas quelqu'un à faire quelque chose qu'il hésite à faire."},
+      ]},
+    s4f2:{other:"Si on est deux ça peut aller. C'est pour quand ?",
+      choices:[
+        {text:"Cet après-midi si vous êtes libre ?",q:"ok",next:"end",r:"D'accord, je viens à 15h !"},
+        {text:"Quand vous voulez.",q:"warn",next:"end",r:"Je viens demain matin alors.",tip:"Propose un moment précis."},
+        {text:"Ce week-end ?",q:"ok",next:"end",r:"Samedi matin ça me va !"},
+        {text:"Le plus tôt possible.",q:"warn",next:"end",r:"Cet après-midi à 15h ?",tip:"Donne une date précise."},
+      ]},
+    s4g:{other:"Vous partez dans combien de temps ?",
+      choices:[
+        {text:"Dans 30 minutes, je reviens dans 2h. Merci !",q:"ok",next:"end",r:"D'accord ! Amenez-le quand vous êtes prêt."},
+        {text:"Maintenant si c'est ok.",q:"ok",next:"end",r:"Allez-y !"},
+        {text:"Je sais pas trop.",q:"warn",next:"end",r:"Amenez-le quand vous voulez.",tip:"Donne une heure précise."},
+        {text:"Bientôt.",q:"warn",next:"end",r:"D'accord.",tip:""},
+      ]},
+    s4g2:{other:"J'ai pas beaucoup de place pour un grand chien.",
+      choices:[
+        {text:"Je comprends tout à fait. Merci quand même.",q:"ok",next:"end",r:"Désolé de pas pouvoir aider davantage."},
+        {text:"Il reste dans le couloir alors.",q:"warn",next:"end",r:"Non, c'est trop étroit.",tip:"Respecte les limites de ton voisin."},
+        {text:"Il sera sage je vous jure.",q:"warn",next:"end",r:"C'est pas la question, j'ai vraiment pas la place.",tip:"Accepte le refus avec grâce."},
+        {text:"Je comprends, merci.",q:"ok",next:"end",r:"Bonne journée !"},
+      ]},
+    s4h:{other:"Dans combien de temps vous rendez l'outil ?",
+      choices:[
+        {text:"Ce soir avant 20h c'est sûr.",q:"ok",next:"end",r:"Parfait ! Bonne installation."},
+        {text:"Demain matin au plus tard.",q:"ok",next:"end",r:"Ok, pas de problème."},
+        {text:"Dans la journée.",q:"ok",next:"end",r:"D'accord, merci."},
+        {text:"Je sais pas.",q:"bad",next:"end",r:"Je préfère demain au plus tard.",tip:"Donne toujours un délai quand tu empruntes quelque chose."},
+      ]},
+    end:{other:"De rien ! Bonne journée !",
+      choices:[
+        {text:"Merci beaucoup, bonne journée à vous !",q:"ok",next:null,r:""},
+        {text:"Merci, c'est sympa !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Remercie toujours quelqu'un qui t'a aidé."},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours remercier ton voisin."},
+      ]},
+  }
+},
+{
+  id:"embauche",icon:"💼",name:"Entretien d'embauche simple",who:"Responsable RH",ctx:"Tu passes un entretien pour un poste",
+  start:"s1",
+  steps:{
+    s1:{other:"Bonjour ! Je suis Madame Leroux, responsable RH. Vous êtes [Prénom] ?",
+      choices:[
+        {text:"Bonjour Madame Leroux, oui c'est moi. Enchanté(e) !",q:"ok",next:"s2",r:"Enchanté(e) ! Asseyez-vous. Parlez-moi de vous."},
+        {text:"Ouais c'est moi.",q:"bad",next:"s1b",r:"Très bien… asseyez-vous. Parlez-moi de vous.",tip:"En entretien, sois poli et chaleureux. 'Oui bonjour enchanté' c'est indispensable."},
+        {text:"Bonjour ! Oui, je m'appelle [Prénom Nom].",q:"ok",next:"s2",r:"Parfait, asseyez-vous ! Parlez-moi de vous."},
+        {text:"(Tu hoches la tête sans rien dire)",q:"bad",next:"s1b",r:"Asseyez-vous. Parlez-moi de vous.",tip:"Il faut parler en entretien. Réponds verbalement et souris."},
+      ]},
+    s1b:{other:"Asseyez-vous. Parlez-moi de vous.",
+      choices:[
+        {text:"Bonjour pardon ! Je m'appelle [Prénom], j'ai [âge] ans.",q:"ok",next:"s2b",r:"Bien. Et votre parcours ?"},
+        {text:"Je suis [Prénom], je cherche un travail.",q:"warn",next:"s2b",r:"D'accord. Votre parcours professionnel ?",tip:"En entretien on se présente : nom, âge, parcours."},
+        {text:"Je sais pas par où commencer.",q:"bad",next:"s2c",r:"Dites-moi d'où vous venez professionnellement.",tip:"Prépare une présentation de 2-3 phrases avant l'entretien."},
+        {text:"Je suis [Prénom Nom], j'ai [âge] ans et j'ai travaillé dans [secteur].",q:"ok",next:"s2",r:"Très bien. Pourquoi ce poste ?"},
+      ]},
+    s2:{other:"Parlez-moi de vous.",
+      choices:[
+        {text:"Je m'appelle [Prénom], j'ai [âge] ans. J'ai travaillé en [secteur] et j'aime le contact avec les gens.",q:"ok",next:"s3",r:"Très bien. Pourquoi vous postulez ici ?"},
+        {text:"Je suis sympa et travailleur.",q:"warn",next:"s3b",r:"Pouvez-vous développer votre parcours professionnel ?",tip:"Donne des exemples concrets, pas juste des qualités."},
+        {text:"Je sais pas trop.",q:"bad",next:"s2c",r:"Parlez-moi de votre expérience professionnelle.",tip:"Prépare ta présentation avant un entretien."},
+        {text:"J'ai [âge] ans, je cherche un emploi stable et j'ai de l'expérience en [secteur].",q:"ok",next:"s3",r:"Pourquoi postulez-vous ici ?"},
+      ]},
+    s2b:{other:"Votre parcours professionnel ?",
+      choices:[
+        {text:"J'ai travaillé 2 ans dans la restauration et 1 an en caisse de supermarché.",q:"ok",next:"s3",r:"Bien ! Pourquoi ce poste ?"},
+        {text:"J'ai travaillé un peu partout.",q:"bad",next:"s3b",r:"Pouvez-vous préciser ?",tip:"Cite des expériences précises avec les postes et durées."},
+        {text:"Je suis en ESAT depuis 3 ans, rayon épicerie.",q:"ok",next:"s3",r:"Très bien ! Et pourquoi ce poste ?"},
+        {text:"J'ai pas beaucoup d'expérience.",q:"warn",next:"s2d",r:"Vous avez des stages ou des formations ?",tip:"Parle de ce que tu as fait même si c'est peu."},
+      ]},
+    s2c:{other:"Parlez de votre expérience professionnelle.",
+      choices:[
+        {text:"J'ai travaillé 2 ans en ESAT et j'ai fait des stages en commerce.",q:"ok",next:"s3",r:"Bien ! Pourquoi ce poste ?"},
+        {text:"J'ai très peu d'expérience.",q:"warn",next:"s2d",r:"Vous avez des formations ou des stages ?",tip:"Parle de tout ce que tu as fait."},
+        {text:"Je cherche mon premier emploi.",q:"ok",next:"s2d",r:"Vous avez des stages ou formations ?"},
+        {text:"Je suis motivé.",q:"bad",next:"s3b",r:"C'est bien ! Mais parlez-moi de ce que vous avez déjà fait.",tip:"La motivation c'est bien mais parle de ton expérience."},
+      ]},
+    s2d:{other:"Vous avez des stages ou des formations ?",
+      choices:[
+        {text:"Oui, j'ai fait un stage de 3 mois en boulangerie.",q:"ok",next:"s3",r:"Bien ! Pourquoi ce poste ?"},
+        {text:"J'ai une formation en CAP cuisine.",q:"ok",next:"s3",r:"Très bien ! Pourquoi postulez-vous ici ?"},
+        {text:"Non pas vraiment.",q:"warn",next:"s3c",r:"D'accord. Qu'est-ce qui vous attire dans ce poste ?",tip:"Mets en valeur même les petites expériences."},
+        {text:"J'ai participé à des ateliers en ESAT.",q:"ok",next:"s3",r:"Bien ! Pourquoi ce poste ?"},
+      ]},
+    s3:{other:"Pourquoi vous postulez dans notre entreprise ?",
+      choices:[
+        {text:"J'aime le travail en équipe et votre entreprise a bonne réputation.",q:"ok",next:"s4",r:"C'est vrai qu'on travaille beaucoup en équipe. Vos points forts ?"},
+        {text:"Parce que vous cherchez quelqu'un.",q:"bad",next:"s3d",r:"Certes ! Mais pourquoi NOUS spécifiquement ?",tip:"Montre que tu as choisi cette entreprise, pas juste n'importe quelle offre."},
+        {text:"Le poste correspond à mes compétences et j'habite pas loin.",q:"ok",next:"s4",r:"Bien. Vos points forts ?"},
+        {text:"Je cherche un emploi stable et ce poste m'intéresse vraiment.",q:"ok",next:"s4",r:"Qu'est-ce qui vous attire dans ce poste ?"},
+      ]},
+    s3b:{other:"Développez votre parcours professionnel.",
+      choices:[
+        {text:"J'ai travaillé 2 ans en supermarché et j'ai une formation CAP.",q:"ok",next:"s4",r:"Bien ! Vos points forts ?"},
+        {text:"J'ai fait des petits boulots.",q:"warn",next:"s3e",r:"Lesquels ?",tip:"Cite des expériences précises."},
+        {text:"J'ai pas grand-chose à dire.",q:"bad",next:"s3c",r:"Tout le monde a quelque chose. Stages ? Bénévolat ?",tip:"Parle de tout : stages, bénévolat, activités en ESAT…"},
+        {text:"3 ans en ESAT et 1 stage en restauration.",q:"ok",next:"s4",r:"Très bien ! Vos points forts ?"},
+      ]},
+    s3c:{other:"Qu'est-ce qui vous attire dans ce poste ?",
+      choices:[
+        {text:"Le contact avec les clients et travailler en équipe.",q:"ok",next:"s4",r:"Bien ! Vos points forts ?"},
+        {text:"Le salaire.",q:"bad",next:"s3f",r:"Hmm… Y a-t-il d'autres raisons ?",tip:"On ne dit pas que c'est pour le salaire en premier en entretien."},
+        {text:"J'aime aider les gens et être utile.",q:"ok",next:"s4",r:"C'est une qualité importante pour ce poste ! Vos points forts ?"},
+        {text:"Je sais pas trop.",q:"bad",next:"s3f",r:"Vous devriez y réfléchir. Qu'est-ce que vous aimez dans le travail ?",tip:"Prépare la réponse à cette question avant l'entretien."},
+      ]},
+    s3d:{other:"Pourquoi NOUS spécifiquement ?",
+      choices:[
+        {text:"J'ai lu que votre entreprise accueille les personnes en situation de handicap.",q:"ok",next:"s4",r:"Tout à fait ! Nous sommes très engagés. Vos points forts ?"},
+        {text:"Parce que c'est proche de chez moi.",q:"warn",next:"s4",r:"Ok… Vos points forts ?",tip:"La proximité c'est pratique mais pas suffisant comme motivation."},
+        {text:"Le poste m'a semblé correspondre à mes compétences.",q:"ok",next:"s4",r:"Bien ! Vos points forts ?"},
+        {text:"J'ai vu l'annonce et ça m'a intéressé.",q:"warn",next:"s4",r:"Et ce qui vous a intéressé c'est quoi ?",tip:"Développe ce qui t'a attiré dans l'annonce."},
+      ]},
+    s3e:{other:"Quels petits boulots ?",
+      choices:[
+        {text:"Caisse de supermarché, livraison, un stage en boulangerie.",q:"ok",next:"s4",r:"C'est bien ! Vos points forts ?"},
+        {text:"Des trucs divers.",q:"bad",next:"s4",r:"D'accord… Vos points forts ?",tip:"Sois précis sur tes expériences."},
+        {text:"Manutention et service en salle.",q:"ok",next:"s4",r:"Bien. Vos points forts ?"},
+        {text:"Je préfère pas détailler.",q:"bad",next:"s4",r:"D'accord. Vos points forts ?",tip:"En entretien il faut parler de son parcours."},
+      ]},
+    s3f:{other:"Y a-t-il d'autres raisons de postuler ici ?",
+      choices:[
+        {text:"Oui pardon, j'aime le contact humain et travailler en équipe.",q:"ok",next:"s4",r:"C'est mieux ! Vos points forts ?"},
+        {text:"Je veux apprendre et progresser.",q:"ok",next:"s4",r:"Bien ! Vos points forts ?"},
+        {text:"Non vraiment c'est pour le salaire.",q:"bad",next:"s4",r:"Honnête… Vos points forts ?",tip:"Le salaire ne doit pas être la seule motivation exprimée."},
+        {text:"J'aime le secteur d'activité.",q:"ok",next:"s4",r:"Bien ! Vos points forts ?"},
+      ]},
+    s4:{other:"Quels sont vos points forts ?",
+      choices:[
+        {text:"Je suis ponctuel, sérieux et j'aime aider mes collègues.",q:"ok",next:"s5",r:"Bien. Et vos points faibles ?"},
+        {text:"Je suis bien.",q:"bad",next:"s4b",r:"Pouvez-vous préciser vos qualités ?",tip:"Cite des qualités concrètes avec des exemples si possible."},
+        {text:"Je suis motivé, rigoureux et j'apprends vite.",q:"ok",next:"s5",r:"Très bien. Un point faible ?"},
+        {text:"Je sais pas.",q:"bad",next:"s4b",r:"Tout le monde a des qualités. Qu'est-ce qu'on dit de vous au travail ?",tip:"Prépare 2-3 qualités avant l'entretien."},
+      ]},
+    s4b:{other:"Quelles sont vos qualités concrètement ?",
+      choices:[
+        {text:"Je suis ponctuel et j'aime le travail bien fait.",q:"ok",next:"s5",r:"Bien. Un point faible ?"},
+        {text:"Je suis sympa.",q:"warn",next:"s5",r:"D'accord. Un point faible ?",tip:"'Sympa' n'est pas une qualité professionnelle. Dis ponctuel, rigoureux, organisé…"},
+        {text:"Je suis toujours à l'heure et fiable.",q:"ok",next:"s5",r:"Bien ! Un point faible ?"},
+        {text:"Je travaille bien.",q:"warn",next:"s5",r:"Un point faible ?",tip:"Donne des qualités plus précises."},
+      ]},
+    s5:{other:"Et un point faible, vous en avez un ?",
+      choices:[
+        {text:"J'ai parfois du mal à demander de l'aide mais je m'améliore.",q:"ok",next:"s6",r:"C'est honnête et vous montrez que vous progressez. Vous avez des questions ?"},
+        {text:"Non j'ai pas de défauts.",q:"bad",next:"s5b",r:"Tout le monde en a. Prenez le temps de réfléchir.",tip:"Dire qu'on n'a pas de défauts manque d'honnêteté. Cite un défaut et comment tu le travailles."},
+        {text:"Je suis parfois trop perfectionniste.",q:"ok",next:"s6",r:"C'est une réponse classique mais honnête. Des questions ?"},
+        {text:"Je suis lent parfois mais je fais les choses bien.",q:"ok",next:"s6",r:"C'est honnête. Des questions pour nous ?"},
+      ]},
+    s5b:{other:"Tout le monde a un point faible.",
+      choices:[
+        {text:"Je suis parfois anxieux dans les nouvelles situations.",q:"ok",next:"s6",r:"Honnête ! Et vous faites quoi pour gérer ça ?"},
+        {text:"J'ai du mal avec les chiffres.",q:"ok",next:"s6",r:"Ce poste n'implique pas beaucoup de chiffres. Des questions ?"},
+        {text:"Je sais vraiment pas.",q:"warn",next:"s6",r:"Réfléchissez-y pour les prochains entretiens. Des questions ?",tip:"Avoir une réponse sur ses points faibles est indispensable."},
+        {text:"J'ai du mal à dire non.",q:"ok",next:"s6",r:"C'est honnête ! Des questions ?"},
+      ]},
+    s6:{other:"Vous avez des questions pour nous ?",
+      choices:[
+        {text:"Oui, quelles sont les horaires de travail ?",q:"ok",next:"s6b",r:"De 9h à 17h du lundi au vendredi."},
+        {text:"Non merci.",q:"warn",next:"end",r:"Très bien ! On vous recontacte sous 15 jours.",tip:"Poser des questions montre ton intérêt pour le poste."},
+        {text:"Quand aurai-je une réponse ?",q:"ok",next:"s6c",r:"Sous 15 jours."},
+        {text:"Est-ce qu'il y a une période d'essai ?",q:"ok",next:"s6d",r:"Oui, 2 mois renouvelables une fois."},
+      ]},
+    s6b:{other:"9h-17h du lundi au vendredi.",
+      choices:[
+        {text:"C'est parfait pour moi. Merci pour cet entretien !",q:"ok",next:"end",r:"Merci à vous. On vous recontacte !"},
+        {text:"Et les congés ?",q:"ok",next:"s6e",r:"5 semaines par an selon la convention."},
+        {text:"Ok.",q:"warn",next:"end",r:"On vous recontacte sous 15 jours.",tip:"Remercie pour l'entretien en partant."},
+        {text:"D'accord. Et le salaire ?",q:"warn",next:"s6f",r:"Le salaire est au SMIC + primes. Est-ce que ça vous convient ?",tip:"La question du salaire peut être posée mais à la fin."},
+      ]},
+    s6c:{other:"Réponse sous 15 jours.",
+      choices:[
+        {text:"Merci. Et si je n'ai pas de nouvelles ?",q:"ok",next:"s6g",r:"Vous pouvez nous rappeler après 15 jours."},
+        {text:"D'accord. Merci pour l'entretien !",q:"ok",next:"end",r:"Merci à vous !"},
+        {text:"C'est long.",q:"bad",next:"end",r:"C'est notre délai habituel.",tip:"Ne commente pas négativement les délais de réponse."},
+        {text:"Ok.",q:"warn",next:"end",r:"On vous recontacte !",tip:"Remercie pour l'entretien."},
+      ]},
+    s6d:{other:"Période d'essai de 2 mois renouvelables.",
+      choices:[
+        {text:"C'est normal. Merci pour l'entretien !",q:"ok",next:"end",r:"Merci à vous !"},
+        {text:"Et si la période d'essai se passe bien ?",q:"ok",next:"s6h",r:"Vous êtes intégré définitivement à l'équipe !"},
+        {text:"2 mois c'est long.",q:"bad",next:"end",r:"C'est la durée légale.",tip:"La période d'essai est standard, ne la critique pas."},
+        {text:"D'accord, merci.",q:"ok",next:"end",r:"Merci à vous !"},
+      ]},
+    s6e:{other:"5 semaines de congés par an.",
+      choices:[
+        {text:"C'est bien. Merci pour cet entretien !",q:"ok",next:"end",r:"Merci à vous ! On vous recontacte."},
+        {text:"D'accord, merci.",q:"ok",next:"end",r:"Merci à vous !"},
+        {text:"C'est peu.",q:"bad",next:"end",r:"C'est la norme en France.",tip:"Ne critique pas les avantages en entretien."},
+        {text:"Ok merci pour les informations.",q:"ok",next:"end",r:"Merci à vous !"},
+      ]},
+    s6f:{other:"SMIC + primes. Ça vous convient ?",
+      choices:[
+        {text:"Oui tout à fait. Merci pour l'entretien !",q:"ok",next:"end",r:"Merci à vous !"},
+        {text:"C'est un peu juste.",q:"bad",next:"end",r:"C'est notre grille. On vous recontacte.",tip:"En premier entretien on négocie rarement le salaire."},
+        {text:"Oui ça me convient.",q:"ok",next:"end",r:"Merci à vous !"},
+        {text:"D'accord.",q:"warn",next:"end",r:"On vous recontacte !",tip:"Remercie pour l'entretien."},
+      ]},
+    s6g:{other:"Vous pouvez rappeler après 15 jours.",
+      choices:[
+        {text:"D'accord, merci pour cet entretien !",q:"ok",next:"end",r:"Merci à vous, bonne journée !"},
+        {text:"Très bien, je note. Merci !",q:"ok",next:"end",r:"À bientôt !"},
+        {text:"Ok.",q:"warn",next:"end",r:"Bonne journée !",tip:""},
+        {text:"Merci beaucoup.",q:"ok",next:"end",r:"Bonne journée !"},
+      ]},
+    s6h:{other:"Vous rejoignez l'équipe définitivement si tout se passe bien.",
+      choices:[
+        {text:"C'est motivant ! Merci pour l'entretien.",q:"ok",next:"end",r:"Merci à vous ! On vous recontacte."},
+        {text:"Parfait. Merci beaucoup.",q:"ok",next:"end",r:"À bientôt !"},
+        {text:"Ok merci.",q:"warn",next:"end",r:"Bonne journée !",tip:"Remercie avec enthousiasme."},
+        {text:"Super, j'espère que ça se passera bien.",q:"ok",next:"end",r:"Nous aussi ! Bonne journée."},
+      ]},
+    end:{other:"Merci pour votre visite. On vous recontacte sous 15 jours. Bonne journée !",
+      choices:[
+        {text:"Merci beaucoup, bonne journée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Merci, au revoir !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"Un 'merci bonne journée' c'est indispensable en fin d'entretien."},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Toujours remercier et dire au revoir après un entretien."},
+      ]},
+  }
+},
+{
+  id:"urgences",icon:"🚨",name:"Appel du 15 - Urgence",who:"Opérateur SAMU",ctx:"Tu appelles le 15 pour une urgence",
+  start:"s1",
+  steps:{
+    s1:{other:"SAMU, j'écoute.",
+      choices:[
+        {text:"Bonjour, j'ai besoin d'aide rapidement.",q:"warn",next:"s2b",r:"Dites-moi, quelle est la situation ?",tip:"En urgence, dis directement ce qui se passe sans dire bonjour d'abord."},
+        {text:"Il y a quelqu'un qui ne répond plus, il est par terre !",q:"ok",next:"s2",r:"D'accord, restez calme. Il respire ?"},
+        {text:"Euh… je sais pas quoi faire.",q:"bad",next:"s1b",r:"Parlez-moi ! Que se passe-t-il ?",tip:"En urgence, décris immédiatement ce que tu vois même si tu paniques."},
+        {text:"Je crois que mon voisin a un malaise.",q:"ok",next:"s2",r:"Il est conscient ? Il respire ?"},
+      ]},
+    s1b:{other:"Parlez-moi ! Que se passe-t-il ?",
+      choices:[
+        {text:"Mon voisin est par terre, il répond pas !",q:"ok",next:"s2",r:"Il respire ?"},
+        {text:"Il y a un accident !",q:"ok",next:"s2c",r:"Où êtes-vous ? Des blessés ?"},
+        {text:"Je sais pas.",q:"bad",next:"s2b",r:"Décrivez ce que vous voyez autour de vous.",tip:"Décris ce que tu vois même si tu ne comprends pas ce qui se passe."},
+        {text:"Quelqu'un est blessé.",q:"ok",next:"s2c",r:"Où êtes-vous ? Blessure grave ?"},
+      ]},
+    s2:{other:"Il respire ?",
+      choices:[
+        {text:"Je sais pas, je crois pas… son ventre bouge pas.",q:"ok",next:"s3",r:"D'accord. Je vous envoie les secours. Votre adresse ?"},
+        {text:"Oui je crois qu'il respire mais il répond pas.",q:"ok",next:"s3b",r:"D'accord. Il a une plaie ou saigne ?"},
+        {text:"Je sais pas vérifier.",q:"warn",next:"s2d",r:"Mettez votre main devant sa bouche, vous sentez de l'air ?"},
+        {text:"J'ose pas m'approcher.",q:"bad",next:"s2d",r:"Approchez-vous doucement. Il faut savoir s'il respire.",tip:"En urgence il faut s'approcher pour évaluer la situation."},
+      ]},
+    s2b:{other:"Décrivez ce que vous voyez.",
+      choices:[
+        {text:"Une personne est par terre dans la rue, elle bouge pas.",q:"ok",next:"s2",r:"Elle respire ?"},
+        {text:"Un accident de voiture.",q:"ok",next:"s2c",r:"Votre adresse et des blessés ?"},
+        {text:"Du sang.",q:"ok",next:"s2e",r:"Où est la blessure ? Quelqu'un est blessé ?"},
+        {text:"Beaucoup de monde autour.",q:"warn",next:"s2f",r:"Il y a eu quoi comme accident ?",tip:"Décris l'événement, pas juste qu'il y a du monde."},
+      ]},
+    s2c:{other:"Votre adresse et des blessés ?",
+      choices:[
+        {text:"Je suis au croisement rue de la Paix et avenue Carnot. 2 blessés.",q:"ok",next:"s4",r:"Les secours arrivent. Les blessés sont conscients ?"},
+        {text:"Rue Victor Hugo, une voiture dans un arbre.",q:"ok",next:"s4",r:"Des blessés dans la voiture ?"},
+        {text:"Je sais pas où je suis exactement.",q:"warn",next:"s2g",r:"Regardez un panneau ou des numéros de rue.",tip:"Il faut toujours savoir où on est ou chercher autour de soi."},
+        {text:"À Paris, je sais pas le nom de la rue.",q:"warn",next:"s2g",r:"Regardez autour de vous un numéro de rue ou un magasin.",tip:"Cherche des repères pour donner ta position."},
+      ]},
+    s2d:{other:"Vous sentez de l'air devant sa bouche ?",
+      choices:[
+        {text:"Non, je sens rien.",q:"ok",next:"s3",r:"Il ne respire pas. Secours envoyés. Votre adresse ?"},
+        {text:"Oui je sens quelque chose.",q:"ok",next:"s3b",r:"Bien. Il est allongé ou assis ?"},
+        {text:"Je sais pas.",q:"warn",next:"s2d2",r:"Approchez votre joue de sa bouche et dites-moi.",tip:"Il faut essayer même si tu as peur."},
+        {text:"J'ose vraiment pas.",q:"bad",next:"s2d2",r:"Il le faut ! C'est important pour les secours.",tip:"En situation d'urgence, on surmonte sa peur pour aider."},
+      ]},
+    s2d2:{other:"Approchez votre joue de sa bouche.",
+      choices:[
+        {text:"Je sens de l'air faiblement.",q:"ok",next:"s3b",r:"Il respire faiblement. Votre adresse ?"},
+        {text:"Non je sens rien.",q:"ok",next:"s3",r:"Pas de respiration. Secours envoyés. Votre adresse ?"},
+        {text:"Je peux pas.",q:"bad",next:"s3",r:"D'accord, je vous envoie les secours. Votre adresse ?",tip:"En urgence, essaie de te surpasser."},
+        {text:"Oui un peu d'air.",q:"ok",next:"s3b",r:"Il respire. Adresse ?"},
+      ]},
+    s2e:{other:"Où est la blessure ? Quelqu'un est blessé ?",
+      choices:[
+        {text:"À la tête, une femme saigne beaucoup.",q:"ok",next:"s3c",r:"Appuyez fortement sur la plaie avec un tissu propre. Votre adresse ?"},
+        {text:"Au bras, c'est pas très grave.",q:"ok",next:"s3d",r:"Comprimez la blessure. Votre adresse ?"},
+        {text:"Je sais pas exactement.",q:"warn",next:"s3",r:"D'accord, les secours arrivent. Votre adresse ?",tip:"Regarde où est la blessure pour mieux informer les secours."},
+        {text:"Partout.",q:"warn",next:"s3c",r:"Blessures multiples. Votre adresse ?",tip:"Essaie de localiser les blessures principales."},
+      ]},
+    s2f:{other:"Il y a eu quoi comme accident ?",
+      choices:[
+        {text:"Une voiture a renversé un cycliste.",q:"ok",next:"s2c",r:"Adresse et état du blessé ?"},
+        {text:"Deux voitures se sont rentrées dedans.",q:"ok",next:"s2c",r:"Des blessés ?"},
+        {text:"Une chute.",q:"ok",next:"s2",r:"Elle répond ? Elle respire ?"},
+        {text:"Je sais pas trop.",q:"warn",next:"s3",r:"J'envoie les secours. Votre adresse ?",tip:"Décris ce que tu vois même brièvement."},
+      ]},
+    s2g:{other:"Regardez autour de vous un panneau ou un magasin.",
+      choices:[
+        {text:"Je vois 'Rue Nationale' sur un panneau.",q:"ok",next:"s4",r:"Rue Nationale dans quelle ville ?"},
+        {text:"Il y a une boulangerie 'Chez Paul' en face.",q:"ok",next:"s4",r:"D'accord, on localise. Les blessés ?"},
+        {text:"Je vois rien.",q:"warn",next:"s3",r:"Restez en ligne, on vous localise par téléphone.",tip:"Cherche mieux autour de toi."},
+        {text:"Numéro 45 sur une porte.",q:"ok",next:"s4",r:"Rue et ville ?"},
+      ]},
+    s3:{other:"Votre adresse complète ?",
+      choices:[
+        {text:"45 rue Nationale à Lyon.",q:"ok",next:"s4",r:"Les secours partent. Restez avec moi. La personne bouge ?"},
+        {text:"Je suis au 12 avenue de la Gare à Bordeaux.",q:"ok",next:"s4",r:"Secours envoyés ! Elle bouge ou répond ?"},
+        {text:"Je sais pas le numéro exactement.",q:"warn",next:"s3e",r:"La rue et la ville suffisent pour l'instant.",tip:"Donne au moins la rue et la ville."},
+        {text:"Chez moi.",q:"bad",next:"s3e",r:"Votre adresse postale s'il vous plaît.",tip:"'Chez moi' n'est pas une adresse pour les secours."},
+      ]},
+    s3b:{other:"Il respire. Il a une plaie ou saigne ?",
+      choices:[
+        {text:"Non je vois pas de plaie.",q:"ok",next:"s3",r:"Mettez-le en position latérale de sécurité si possible. Adresse ?"},
+        {text:"Il a une bosse sur la tête.",q:"ok",next:"s3",r:"Ne le bougez pas. Adresse ?"},
+        {text:"Il saigne un peu au bras.",q:"ok",next:"s3c",r:"Comprimez la blessure doucement. Adresse ?"},
+        {text:"Je sais pas.",q:"warn",next:"s3",r:"D'accord. Adresse ?",tip:"Regarde rapidement si tu vois une blessure."},
+      ]},
+    s3c:{other:"Comprimez la plaie avec un tissu propre. Adresse ?",
+      choices:[
+        {text:"12 rue du Marché à Paris. Je comprime.",q:"ok",next:"s4",r:"Parfait ! Les secours arrivent. Gardez la pression."},
+        {text:"Je comprime. C'est au 5 avenue du Parc à Nice.",q:"ok",next:"s4",r:"Bien ! Secours en route. Continuez."},
+        {text:"Je comprime mais y'a beaucoup de sang.",q:"ok",next:"s4b",r:"C'est normal d'en voir. Continuez d'appuyer fort. Adresse ?"},
+        {text:"Je sais pas comprimer.",q:"warn",next:"s3f",r:"Pliez un tissu et appuyez fort dessus sans lâcher.",tip:"En urgence, essaie de suivre les instructions même si tu ne sais pas."},
+      ]},
+    s3d:{other:"Comprimez la blessure. Votre adresse ?",
+      choices:[
+        {text:"Rue de la Paix à Nantes, numéro 8.",q:"ok",next:"s4",r:"Secours envoyés. Gardez la compression."},
+        {text:"8 rue de la Paix, Nantes.",q:"ok",next:"s4",r:"Bien ! Ils arrivent."},
+        {text:"Je comprime. C'est avenue Victor Hugo.",q:"warn",next:"s4",r:"Victor Hugo dans quelle ville ?",tip:"Donne aussi la ville."},
+        {text:"Je sais pas mon adresse ici.",q:"warn",next:"s2g",r:"Regardez autour de vous un panneau.",tip:"En dehors de chez toi, cherche des repères."},
+      ]},
+    s3e:{other:"La rue et la ville au moins ?",
+      choices:[
+        {text:"Rue Gambetta à Toulouse.",q:"ok",next:"s4",r:"Secours envoyés ! Continuez à surveiller."},
+        {text:"Avenue du Général de Gaulle, Lyon.",q:"ok",next:"s4",r:"Bien ! Les secours arrivent."},
+        {text:"Je suis à Paris mais je sais pas la rue.",q:"warn",next:"s2g",r:"Regardez un panneau ou un numéro.",tip:"Cherche des repères même dans une ville que tu connais mal."},
+        {text:"Je peux pas dire.",q:"bad",next:"s4",r:"On vous localise par le téléphone. Restez en ligne.",tip:"Essaie toujours de donner ta localisation."},
+      ]},
+    s3f:{other:"Appuyez fort avec un tissu sans lâcher.",
+      choices:[
+        {text:"D'accord je le fais, j'appuie.",q:"ok",next:"s4",r:"Très bien ! Adresse ?"},
+        {text:"Je fais de mon mieux.",q:"ok",next:"s4",r:"C'est bien. Adresse ?"},
+        {text:"J'ai pas de tissu.",q:"warn",next:"s4c",r:"Avec votre main directement. Adresse ?",tip:"En urgence, utilise ce que tu as."},
+        {text:"J'ose pas.",q:"bad",next:"s4",r:"Il le faut ! Adresse ?",tip:"En urgence médicale, il faut agir même si tu as peur."},
+      ]},
+    s4:{other:"Les secours arrivent. Restez en ligne. La victime bouge ou parle ?",
+      choices:[
+        {text:"Non toujours pas, elle reste par terre.",q:"ok",next:"s5",r:"Bien, ne la bougez pas. Dites-moi si ça change."},
+        {text:"Elle commence à bouger un peu !",q:"ok",next:"s5b",r:"Bien ! Parlez-lui doucement, rassurez-la."},
+        {text:"Elle a ouvert les yeux.",q:"ok",next:"s5b",r:"Bien ! Dites-lui que les secours arrivent."},
+        {text:"Je sais pas.",q:"warn",next:"s5",r:"Continuez à observer. Ne la bougez pas.",tip:"Observe et décris ce que tu vois."},
+      ]},
+    s4b:{other:"Continuez d'appuyer fort. Adresse ?",
+      choices:[
+        {text:"45 rue du Port à Marseille. J'appuie fort.",q:"ok",next:"s5",r:"Parfait ! Secours en route. Continuez."},
+        {text:"Avenue de la République Bordeaux. Je continue.",q:"ok",next:"s5",r:"Très bien !"},
+        {text:"Je sais pas l'adresse exacte.",q:"warn",next:"s2g",r:"Regardez autour de vous.",tip:""},
+        {text:"Rue Nationale 15.",q:"ok",next:"s5",r:"Quelle ville ?"},
+      ]},
+    s4c:{other:"Appuyez avec la main directement. Adresse ?",
+      choices:[
+        {text:"12 rue du Moulin. J'appuie avec ma main.",q:"ok",next:"s5",r:"Bien ! Secours en route."},
+        {text:"J'appuie. C'est au 5 avenue Pasteur.",q:"ok",next:"s5",r:"Ils arrivent !"},
+        {text:"J'essaie.",q:"warn",next:"s5",r:"Adresse ?",tip:""},
+        {text:"D'accord.",q:"ok",next:"s5",r:"Adresse ?"},
+      ]},
+    s5:{other:"Restez auprès d'elle jusqu'à l'arrivée des secours.",
+      choices:[
+        {text:"D'accord, je reste là et je la surveille.",q:"ok",next:"end",r:"Très bien ! Les secours arrivent. Bonne continuation."},
+        {text:"Je lâche pas.",q:"ok",next:"end",r:"Parfait ! Ils arrivent bientôt."},
+        {text:"J'ai peur.",q:"warn",next:"end",r:"C'est normal. Les secours arrivent vite, restez là.",tip:"La peur est normale mais reste avec la victime."},
+        {text:"Et si quelqu'un d'autre peut rester ?",q:"warn",next:"end",r:"Oui si possible. Mais quelqu'un doit absolument rester.",tip:"Il faut que quelqu'un reste avec la victime jusqu'aux secours."},
+      ]},
+    s5b:{other:"Parlez-lui doucement et rassurez-la.",
+      choices:[
+        {text:"D'accord. Je lui dis que les secours arrivent.",q:"ok",next:"end",r:"Parfait ! Continuez à la surveiller."},
+        {text:"Je lui tiens la main et je lui parle.",q:"ok",next:"end",r:"Très bien ! Ils arrivent bientôt."},
+        {text:"Je sais pas quoi dire.",q:"warn",next:"end",r:"Dites juste 'les secours arrivent, tout va bien'.",tip:"Des mots simples suffisent pour rassurer."},
+        {text:"Elle parle maintenant !",q:"ok",next:"end",r:"Excellent signe ! Restez avec elle."},
+      ]},
+    end:{other:"Les secours arrivent. Bien géré ! Restez en ligne.",
+      choices:[
+        {text:"Merci, je reste là.",q:"ok",next:null,r:""},
+        {text:"D'accord, je raccroche pas.",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"ok",next:null,r:""},
+        {text:"(Tu raccroches)",q:"bad",next:null,r:"",tip:"Ne raccroche jamais avant que l'opérateur te le dise en situation d'urgence."},
+      ]},
+  }
+},
+{
+  id:"renseignement",icon:"🗺️",name:"Demander un renseignement en ville",who:"Passant(e)",ctx:"Tu es perdu(e) et tu demandes ton chemin",
+  start:"s1",
+  steps:{
+    s1:{other:"(Un passant marche vite devant toi)",
+      choices:[
+        {text:"Excusez-moi, vous pouvez m'aider s'il vous plaît ?",q:"ok",next:"s2",r:"Oui bien sûr, qu'est-ce qui se passe ?"},
+        {text:"(Tu le laisses passer et attends quelqu'un d'autre)",q:"warn",next:"s1b",r:"(Un autre passant passe) Bonjour ?",tip:"Ose interpeller les gens ! Un passant pressé peut quand même aider."},
+        {text:"Hé ! Attendez !",q:"warn",next:"s1c",r:"(Il s'arrête) Oui ?",tip:"'Excusez-moi' est plus poli que 'Hé'."},
+        {text:"Excusez-moi monsieur/madame !",q:"ok",next:"s2",r:"Oui ? Je peux vous aider ?"},
+      ]},
+    s1b:{other:"(Le passant te regarde) Bonjour ?",
+      choices:[
+        {text:"Bonjour ! Excusez-moi, vous pouvez m'aider ?",q:"ok",next:"s2",r:"Oui bien sûr !"},
+        {text:"(Tu regardes ailleurs)",q:"bad",next:"s1d",r:"(Il passe son chemin)",tip:"Ose demander de l'aide ! C'est difficile mais nécessaire."},
+        {text:"Excusez-moi, je suis perdu(e).",q:"ok",next:"s2",r:"D'accord, où voulez-vous aller ?"},
+        {text:"Bonsoir, vous connaissez le coin ?",q:"ok",next:"s2b",r:"Un peu oui, qu'est-ce que vous cherchez ?"},
+      ]},
+    s1c:{other:"(Il s'arrête) Oui ?",
+      choices:[
+        {text:"Excusez-moi, je suis désolé(e) de vous déranger. Je cherche la mairie.",q:"ok",next:"s3",r:"La mairie ? Oui je sais où c'est."},
+        {text:"Je suis perdu(e), vous pouvez m'aider ?",q:"ok",next:"s2",r:"D'accord, où voulez-vous aller ?"},
+        {text:"T'as deux minutes ?",q:"bad",next:"s2",r:"(Froncement de sourcils) Oui… qu'est-ce qu'il y a ?",tip:"Tutoyer un inconnu est impoli. Utilise 'vous'."},
+        {text:"Où est la poste s'il vous plaît ?",q:"ok",next:"s3b",r:"La Poste… attendez je réfléchis."},
+      ]},
+    s1d:{other:"(Personne autour, tu es seul)",
+      choices:[
+        {text:"Tu trouves un magasin et tu demandes à l'intérieur.",q:"ok",next:"s2c",r:"Bonjour, je peux vous aider ?"},
+        {text:"Tu cherches une pharmacie ou un office de tourisme.",q:"ok",next:"s2c",r:"Bonjour !"},
+        {text:"Tu restes là sans rien faire.",q:"bad",next:"s1d",r:"(Toujours personne)",tip:"Il faut agir ! Entre dans un commerce, cherche un policier ou un office de tourisme."},
+        {text:"Tu utilises ton téléphone.",q:"ok",next:"s4d",r:"(Le GPS s'allume) Destination ?"},
+      ]},
+    s2:{other:"Où voulez-vous aller ?",
+      choices:[
+        {text:"Je cherche la mairie s'il vous plaît.",q:"ok",next:"s3",r:"La mairie ! Je sais où c'est."},
+        {text:"Je cherche la gare.",q:"ok",next:"s3c",r:"La gare est à 10 minutes à pied."},
+        {text:"Je sais plus où je vais.",q:"bad",next:"s2d",r:"Vous avez une adresse ou un nom de lieu ?",tip:"Dis où tu veux aller même si tu es désorienté(e)."},
+        {text:"Je cherche la rue Victor Hugo.",q:"ok",next:"s3d",r:"Rue Victor Hugo… je la connais."},
+      ]},
+    s2b:{other:"Qu'est-ce que vous cherchez ?",
+      choices:[
+        {text:"Je cherche la mairie s'il vous plaît.",q:"ok",next:"s3",r:"La mairie, oui !"},
+        {text:"La pharmacie la plus proche.",q:"ok",next:"s3e",r:"Il y en a une à 5 minutes."},
+        {text:"Je sais pas trop.",q:"bad",next:"s2d",r:"Vous avez une adresse ?",tip:"Sache où tu veux aller avant de demander."},
+        {text:"La boulangerie.",q:"ok",next:"s3f",r:"Il y en a une juste là-bas !"},
+      ]},
+    s2c:{other:"Bonjour ! Je peux vous aider ?",
+      choices:[
+        {text:"Bonjour ! Oui, je cherche la mairie, je suis perdu(e).",q:"ok",next:"s3",r:"La mairie ! Je connais bien. Attendez…"},
+        {text:"Bonjour, où est la gare s'il vous plaît ?",q:"ok",next:"s3c",r:"La gare est à 10 minutes."},
+        {text:"Je cherche quelque chose dans le coin.",q:"bad",next:"s2",r:"Quoi exactement ?",tip:"Sois précis dans ta demande."},
+        {text:"Bonjour, vous connaissez la rue Gambetta ?",q:"ok",next:"s3d",r:"Rue Gambetta… oui !"},
+      ]},
+    s2d:{other:"Vous avez une adresse ou un nom de lieu ?",
+      choices:[
+        {text:"J'ai un RDV à la mairie.",q:"ok",next:"s3",r:"La mairie ! Je vous explique."},
+        {text:"Je dois aller au 15 rue Victor Hugo.",q:"ok",next:"s3d",r:"Je connais cette rue."},
+        {text:"Non j'ai rien.",q:"bad",next:"s4d",r:"Vous avez un téléphone pour chercher l'adresse ?",tip:"Toujours avoir l'adresse de sa destination."},
+        {text:"Je dois aller à la pharmacie.",q:"ok",next:"s3e",r:"Il y en a une à 5 minutes."},
+      ]},
+    s3:{other:"La mairie ! Vous continuez tout droit, puis tournez à gauche après la boulangerie.",
+      choices:[
+        {text:"Merci ! C'est à combien de minutes à pied ?",q:"ok",next:"s3g",r:"5-7 minutes à pied environ."},
+        {text:"Vous pouvez répéter s'il vous plaît ?",q:"ok",next:"s3r",r:"Tout droit, tournez à gauche après la boulangerie."},
+        {text:"D'accord merci !",q:"warn",next:"end",r:"De rien ! Bonne journée.",tip:"N'hésite pas à demander de préciser ou la durée."},
+        {text:"Je note… tout droit, gauche après la boulangerie. Merci !",q:"ok",next:"end",r:"Exactement ! Bonne journée."},
+      ]},
+    s3b:{other:"La Poste… c'est rue Nationale, tournez à droite au feu.",
+      choices:[
+        {text:"Merci ! C'est loin ?",q:"ok",next:"s3h",r:"5 minutes à pied."},
+        {text:"Vous pouvez répéter ?",q:"ok",next:"s3r2",r:"Rue Nationale, tournez à droite au premier feu."},
+        {text:"Merci beaucoup !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Je note : rue Nationale, droite au feu. Merci.",q:"ok",next:"end",r:"C'est ça ! Bonne journée."},
+      ]},
+    s3c:{other:"La gare est à 10 minutes. Continuez rue Pasteur, puis prenez le pont.",
+      choices:[
+        {text:"Merci ! Et le bus y va ?",q:"ok",next:"s3i",r:"Oui le bus 12 passe par là."},
+        {text:"Vous pouvez me répéter le chemin ?",q:"ok",next:"s3r3",r:"Rue Pasteur jusqu'au pont, ensuite c'est indiqué."},
+        {text:"Merci beaucoup !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"J'ai noté, merci !",q:"ok",next:"end",r:"De rien !"},
+      ]},
+    s3d:{other:"Rue Victor Hugo… c'est à 5 minutes. Tournez à gauche puis c'est la 2ème rue.",
+      choices:[
+        {text:"Merci ! C'est après le feu ?",q:"ok",next:"s3j",r:"Oui juste après le feu rouge, puis 2ème à droite."},
+        {text:"Répétez s'il vous plaît ?",q:"ok",next:"s3r",r:"À gauche, puis 2ème rue."},
+        {text:"D'accord, à gauche, 2ème rue. Merci !",q:"ok",next:"end",r:"Exactement !"},
+        {text:"Merci beaucoup.",q:"ok",next:"end",r:"Bonne journée !"},
+      ]},
+    s3e:{other:"La pharmacie est à 5 minutes, continuez tout droit.",
+      choices:[
+        {text:"Merci ! Elle est ouverte maintenant ?",q:"ok",next:"s3k",r:"Je crois oui, il est 15h."},
+        {text:"Tout droit, compris. Merci !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Merci beaucoup.",q:"ok",next:"end",r:"De rien !"},
+        {text:"Vous pouvez me montrer sur mon téléphone ?",q:"warn",next:"end",r:"Je préfère pas toucher le téléphone de quelqu'un. Mais c'est tout droit !",tip:"Ne demande pas à un inconnu de toucher ton téléphone."},
+      ]},
+    s3f:{other:"La boulangerie est juste là-bas, vous la voyez !",
+      choices:[
+        {text:"Oui je la vois, merci beaucoup !",q:"ok",next:"end",r:"De rien, bonne journée !"},
+        {text:"Ah oui ! Merci.",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Laquelle ? Il y en a deux.",q:"ok",next:"s3l",r:"Celle avec la façade rouge."},
+        {text:"Ok merci.",q:"ok",next:"end",r:"Bonne journée !"},
+      ]},
+    s3g:{other:"5-7 minutes à pied.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Super merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"'Merci bonne journée' c'est plus poli."},
+        {text:"Merci, je vais trouver.",q:"ok",next:null,r:""},
+      ]},
+    s3h:{other:"5 minutes à pied.",
+      choices:[
+        {text:"Merci beaucoup, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Super, merci.",q:"ok",next:null,r:""},
+      ]},
+    s3i:{other:"Le bus 12 passe par là.",
+      choices:[
+        {text:"Merci, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Super, je vais prendre le bus. Merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci beaucoup.",q:"ok",next:null,r:""},
+      ]},
+    s3j:{other:"Oui, feu rouge puis 2ème à droite.",
+      choices:[
+        {text:"Merci, j'ai bien compris. Bonne journée !",q:"ok",next:null,r:""},
+        {text:"Parfait, merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci beaucoup.",q:"ok",next:null,r:""},
+      ]},
+    s3k:{other:"Elle est ouverte, il est 15h.",
+      choices:[
+        {text:"Super merci, bonne journée !",q:"ok",next:null,r:""},
+        {text:"Merci beaucoup.",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+      ]},
+    s3l:{other:"Celle avec la façade rouge.",
+      choices:[
+        {text:"Ah oui je la vois ! Merci beaucoup.",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:""},
+        {text:"Super, merci.",q:"ok",next:null,r:""},
+      ]},
+    s3r:{other:"Tout droit, tournez à gauche après la boulangerie.",
+      choices:[
+        {text:"Merci, j'ai compris. Bonne journée !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Tout droit puis gauche après la boulangerie, c'est noté !",q:"ok",next:"end",r:"Exactement !"},
+        {text:"Et c'est loin ?",q:"ok",next:"s3g",r:"5-7 minutes."},
+        {text:"Merci !",q:"ok",next:"end",r:"De rien !"},
+      ]},
+    s3r2:{other:"Rue Nationale, droite au premier feu.",
+      choices:[
+        {text:"Compris ! Merci.",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Rue Nationale, droite au feu. Merci.",q:"ok",next:"end",r:"C'est ça !"},
+        {text:"Et c'est loin ?",q:"ok",next:"s3h",r:"5 minutes."},
+        {text:"Merci beaucoup.",q:"ok",next:"end",r:"De rien !"},
+      ]},
+    s3r3:{other:"Rue Pasteur jusqu'au pont puis indiqué.",
+      choices:[
+        {text:"D'accord, merci !",q:"ok",next:"end",r:"Bonne journée !"},
+        {text:"Rue Pasteur, pont. Merci beaucoup.",q:"ok",next:"end",r:"Exactement !"},
+        {text:"Et le bus ?",q:"ok",next:"s3i",r:"Le bus 12 passe."},
+        {text:"Merci !",q:"ok",next:"end",r:"De rien !"},
+      ]},
+    s4d:{other:"Destination ?",
+      choices:[
+        {text:"Mairie de [ville].",q:"ok",next:"s4e",r:"(GPS) Prenez à gauche dans 200m."},
+        {text:"15 rue Victor Hugo.",q:"ok",next:"s4e",r:"(GPS) Continuez tout droit 400m."},
+        {text:"Pharmacie.",q:"ok",next:"s4e",r:"(GPS) Pharmacie à 350m à droite."},
+        {text:"Je sais pas où je vais.",q:"bad",next:"end",r:"(GPS ne peut pas trouver)",tip:"Il faut savoir où on veut aller pour utiliser le GPS."},
+      ]},
+    s4e:{other:"(Le GPS te guide)",
+      choices:[
+        {text:"Super, je suis le GPS. Merci.",q:"ok",next:null,r:""},
+        {text:"Le GPS indique bien le chemin.",q:"ok",next:null,r:""},
+        {text:"OK.",q:"warn",next:null,r:"",tip:""},
+        {text:"Je suis les instructions.",q:"ok",next:null,r:""},
+      ]},
+    end:{other:"De rien ! Bonne journée !",
+      choices:[
+        {text:"Merci beaucoup, bonne journée à vous aussi !",q:"ok",next:null,r:""},
+        {text:"Merci !",q:"ok",next:null,r:""},
+        {text:"Ok.",q:"warn",next:null,r:"",tip:"'Merci bonne journée' c'est plus sympa."},
+        {text:"(Tu pars sans rien dire)",q:"bad",next:null,r:"",tip:"Remercie toujours quelqu'un qui t'a aidé."},
+      ]},
+  }
+},
+
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let S={screen:"menu",scIdx:0,stepId:"",msgs:[],log:[],chosen:null,feedback:null,done:{}};
+const letters=["A","B","C","D"];
+
+function sc(){return SCENARIOS[S.scIdx];}
+function step(){return S.stepId?sc().steps[S.stepId]:null;}
+
+// ─── SYNTHÈSE VOCALE ──────────────────────────────────────────────────────────
+const synth=window.speechSynthesis;
+function speak(text){
+  if(!synth) return;
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="fr-FR";u.rate=0.9;u.pitch=1.05;
+  synth.speak(u);
+}
+
+// ─── RECONNAISSANCE VOCALE ────────────────────────────────────────────────────
+let recognition=null;
+if(window.SpeechRecognition||window.webkitSpeechRecognition){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR();
+  recognition.lang="fr-FR";recognition.continuous=false;recognition.interimResults=false;
+}
+
+function startListen(cb){
+  if(!recognition){cb(null);return;}
+  recognition.start();
+  recognition.onresult=e=>cb(e.results[0][0].transcript);
+  recognition.onerror=()=>cb(null);
+  recognition.onend=()=>{};
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  const g=document.getElementById("app");
+  ({menu:renderMenu,chat:renderChat,end:renderEnd}[S.screen]||renderMenu)(g);
+}
+
+function renderMenu(g){
+  const cards=SCENARIOS.map((s,i)=>`
+    <div class="sc-card${S.done[s.id]?" done":""}" onclick="startSc(${i})">
+      <div class="sc-icon">${s.icon}</div>
+      <div class="sc-name">${s.name}</div>
+      ${S.done[s.id]?'<div class="sc-done">✅ Terminé</div>':''}
+    </div>`).join("");
+  g.innerHTML=`<h1>💬 Simulateur de dialogue</h1>
+    <p class="subtitle">Entraîne-toi à communiquer dans la vie de tous les jours. Choisis une situation.</p>
+    <div class="grid">${cards}</div>
+    <div class="tip">💡 <b>Comment jouer :</b> Lis la réplique, puis choisis parmi 4 réponses. La bonne n'est pas toujours la première ! Le scénario change selon ce que tu dis. 🔊 Appuie sur Réécouter pour entendre la réplique.</div>`;
+}
+
+function startSc(i){
+  S.scIdx=i;S.stepId=sc().start;S.msgs=[];S.log=[];S.chosen=null;S.feedback=null;S.screen="chat";
+  const intro=step().other;
+  S.msgs.push({who:"other",text:intro});
+  render();
+  setTimeout(()=>speak(intro),400);
+}
+
+function renderChat(g){
+  const s=sc();
+  const st=step();
+  // Dots de progression
+  let dots='<div class="prog">';
+  S.log.forEach(l=>dots+=`<div class="prog-dot pd-${l.q}"></div>`);
+  if(st) dots+='<div class="prog-dot pd-active"></div>';
+  dots+='</div>';
+
+  // Messages
+  const msgs=S.msgs.map(m=>`
+    <div class="bubble-wrap${m.who==="me"?" me":""}">
+      <div class="bubble-lbl">${m.who==="other"?s.who:"Moi"}</div>
+      <div class="bubble ${m.cls||m.who}">${m.text}</div>
+    </div>`).join("");
+
+  // Feedback
+  let fb="";
+  if(S.feedback){
+    fb=`<div class="reaction r-${S.feedback.type}">${S.feedback.msg}</div>`;
+  }
+
+  // Choix
+  let choicesHtml="";
+  if(st && S.chosen===null){
+    choicesHtml='<div class="choices">'+
+      st.choices.map((c,i)=>`
+        <button class="choice" onclick="choose(${i})">
+          <span class="ltr">${letters[i]}</span>${c.text}
+        </button>`).join("")+
+      '</div>';
+  } else if(st && S.chosen!==null){
+    const ch=st.choices[S.chosen];
+    choicesHtml='<div class="choices">'+
+      st.choices.map((c,i)=>{
+        let ltrCls="ltr";
+        let btnCls="choice dim";
+        if(i===S.chosen){ltrCls="ltr ltr-"+c.q;btnCls="choice";}
+        else if(c.q==="ok" && ch.q!=="ok") ltrCls="ltr ltr-reveal";
+        return`<button class="choice${i===S.chosen?"":" dim"}" disabled>
+          <span class="${ltrCls}">${letters[i]}</span>${c.text}
+        </button>`;
+      }).join("")+
+      '</div>'+
+      `<button class="btn btn-p" onclick="nextStep()">${ch.next?"Continuer →":"Voir mon bilan"}</button>`;
+  }
+
+  // Barre micro/son
+  const voiceBar=`<div class="voice-bar">
+    <button class="mic-btn mic-idle" id="mic" onclick="toggleMic()" title="Répondre à voix haute">🎤</button>
+    <span class="voice-status" id="vstatus">Choisis une réponse ou parle avec le micro.</span>
+    <button class="speak-btn" onclick="speakLast()">🔊 Réécouter</button>
+  </div>`;
+
+  g.innerHTML=`
+    <button class="btn-back" onclick="S.screen='menu';synth&&synth.cancel();render()">← Retour</button>
+    ${dots}
+    <div class="chat-box">
+      <div class="chat-head">
+        <div class="chat-head-icon">${s.icon}</div>
+        <div><div class="chat-head-name">${s.who}</div><div class="chat-head-ctx">${s.ctx}</div></div>
+      </div>
+      <div class="chat-msgs" id="cmsg">${msgs}</div>
+    </div>
+    ${fb}
+    ${voiceBar}
+    ${choicesHtml}`;
+  const cm=document.getElementById("cmsg");
+  if(cm) cm.scrollTop=cm.scrollHeight;
+}
+
+function choose(i){
+  if(S.chosen!==null) return;
+  const st=step();
+  const c=st.choices[i];
+  S.chosen=i;
+  const cls=c.q==="ok"?"me-ok":c.q==="warn"?"me-warn":"me-bad";
+  S.msgs.push({who:"me",text:c.text,cls});
+  S.log.push({q:c.q,said:c.text,tip:c.tip||"",stepOther:st.other,better:st.choices.find(x=>x.q==="ok")?.text||""});
+  if(c.q==="ok") S.feedback={type:"ok",msg:"✅ Parfait !"};
+  else if(c.q==="warn") S.feedback={type:"warn",msg:"😬 Ça peut marcher mais c'est approximatif."+(c.tip?" "+c.tip:"")};
+  else S.feedback={type:"bad",msg:"❌ Cette réponse n'est pas adaptée."+(c.tip?" "+c.tip:"")};
+  render();
+  if(c.r) setTimeout(()=>{S.msgs.push({who:"other",text:c.r});speak(c.r);},700);
+}
+
+function nextStep(){
+  const c=step().choices[S.chosen];
+  S.chosen=null;S.feedback=null;
+  if(!c.next){S.done[sc().id]=true;S.screen="end";render();return;}
+  S.stepId=c.next;
+  render();
+}
+
+function speakLast(){
+  const last=S.msgs.filter(m=>m.who==="other").pop();
+  if(last) speak(last.text);
+}
+
+function toggleMic(){
+  const mic=document.getElementById("mic");
+  const vs=document.getElementById("vstatus");
+  if(!recognition){vs&&(vs.textContent="🎤 Micro non disponible sur ce navigateur (utilise Chrome).");return;}
+  mic&&(mic.className="mic-btn mic-on");
+  vs&&(vs.textContent="🎤 J'écoute…");
+  startListen(txt=>{
+    mic&&(mic.className="mic-btn mic-idle");
+    if(txt){
+      vs&&(vs.textContent='Tu as dit : "'+txt+'"');
+      matchVoice(txt);
+    } else {
+      vs&&(vs.textContent="Je n'ai pas compris. Choisis une réponse.");
+    }
+  });
+}
+
+function matchVoice(txt){
+  const st=step();
+  if(!st||S.chosen!==null) return;
+  const lo=txt.toLowerCase();
+  let best=0,bestScore=0;
+  st.choices.forEach((c,i)=>{
+    const words=c.text.toLowerCase().replace(/[^\w\s]/g,"").split(/\s+/).filter(w=>w.length>3);
+    const score=words.length?words.filter(w=>lo.includes(w)).length/words.length:0;
+    if(score>bestScore){bestScore=score;best=i;}
+  });
+  choose(best);
+}
+
+function renderEnd(g){
+  const ok=S.log.filter(l=>l.q==="ok").length;
+  const warn=S.log.filter(l=>l.q==="warn").length;
+  const bad=S.log.filter(l=>l.q==="bad").length;
+  const total=S.log.length;
+  const pct=total?Math.round(ok/total*100):0;
+
+  let msg="",color="";
+  if(pct>=80){msg="Excellent ! Tu communiques très bien dans cette situation.";color="#27500A";}
+  else if(pct>=55){msg="Bien joué ! Encore un peu d'entraînement et ce sera parfait.";color="#185FA5";}
+  else if(pct>=35){msg="Pas mal, mais il y a des points à améliorer. Lis le bilan ci-dessous.";color="#633806";}
+  else{msg="Il faut s'entraîner davantage. Relis le bilan pour comprendre ce qui n'allait pas.";color="#791F1F";}
+
+  // Erreurs détaillées (warn + bad seulement)
+  const errors=S.log.filter(l=>l.q!=="ok");
+  let errorSection="";
+  if(errors.length>0){
+    const items=errors.map(l=>`
+      <div class="error-item">
+        <div class="error-q">🗣 ${l.stepOther}</div>
+        <div class="error-said">❌ Tu as dit : "${l.said}"</div>
+        ${l.tip?`<div style="font-size:12px;color:#888;margin:2px 0">➜ ${l.tip}</div>`:""}
+        ${l.better?`<div class="error-better">✅ Mieux : "${l.better}"</div>`:""}
+      </div>`).join("");
+    errorSection=`
+      <div style="font-size:14px;font-weight:700;color:#111;margin-bottom:8px">📋 Ce qu'on peut améliorer</div>
+      <div class="error-list">${items}</div>`;
+  } else {
+    errorSection=`<div class="tip">🎉 Aucune erreur ! Tu as parfaitement géré cette situation.</div>`;
+  }
+
+  g.innerHTML=`
+    <h1>${sc().icon} ${sc().name}</h1>
+    <div class="score-big">${ok}/${total}</div>
+    <div class="score-sub" style="color:${color}">${msg}</div>
+    <div class="badges">
+      <span class="badge" style="background:#EAF3DE;color:#27500A">✅ ${ok} parfaites</span>
+      ${warn?`<span class="badge" style="background:#FAEEDA;color:#633806">😬 ${warn} approx.</span>`:""}
+      ${bad?`<span class="badge" style="background:#FCEBEB;color:#791F1F">❌ ${bad} inadaptées</span>`:""}
+    </div>
+    ${errorSection}
+    <button class="btn btn-p" onclick="startSc(S.scIdx)">Recommencer</button>
+    <button class="btn" onclick="S.screen='menu';render()">Autre scénario</button>`;
+}
+
+render();
+</script>
+</body>
+</html>
