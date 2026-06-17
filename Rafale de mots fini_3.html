@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Rafale de Mots — Jeu de fluence catégorielle</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+:root{
+  --blue:#4A90D9;
+  --blue-dark:#3A73AD;
+  --blue-light:#EAF2FC;
+  --bg:#F4F8FD;
+  --card:#FFFFFF;
+  --text:#2B3A4A;
+  --text-light:#6E8195;
+  --green:#48B36B;
+  --green-light:#E7F6EC;
+  --orange:#F2A93B;
+  --orange-light:#FDF1DD;
+  --red:#E25858;
+  --red-light:#FCE8E8;
+  --radius:18px;
+  --radius-sm:12px;
+  --shadow:0 4px 14px rgba(74,144,217,0.14);
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  font-family:'Nunito',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.app{
+  max-width:480px;
+  margin:0 auto;
+  padding:18px 16px 36px;
+  min-height:100vh;
+}
+.screen{display:none;}
+.screen.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---------- Header ---------- */
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:14px;
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.brand-emoji{font-size:28px;}
+.brand h1{font-size:20px;margin:0;font-weight:800;color:var(--blue-dark);}
+.brand p{margin:0;font-size:12.5px;color:var(--text-light);}
+.icon-btn{
+  background:var(--card);
+  border:none;
+  width:38px;height:38px;
+  border-radius:50%;
+  box-shadow:var(--shadow);
+  font-size:17px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:active{transform:scale(0.92);}
+
+/* ---------- Cards / generic ---------- */
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:16px;
+  margin-bottom:14px;
+}
+.section-title{
+  font-size:13.5px;
+  font-weight:800;
+  color:var(--blue-dark);
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin:0 0 10px 2px;
+}
+
+/* ---------- Jetons ---------- */
+.jeton-rule{font-size:11.5px;color:var(--text-light);margin:6px 2px 0;}
+
+/* ---------- Mode selector ---------- */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mode-btn{
+  border:2px solid transparent;
+  background:var(--blue-light);
+  border-radius:var(--radius-sm);
+  padding:14px 10px;
+  text-align:center;
+  cursor:pointer;
+  font-family:inherit;
+}
+.mode-btn .em{font-size:26px;display:block;margin-bottom:4px;}
+.mode-btn .lbl{font-weight:800;font-size:14px;color:var(--blue-dark);}
+.mode-btn .sub{font-size:11.5px;color:var(--text-light);margin-top:2px;}
+.mode-btn.selected{border-color:var(--blue);background:white;box-shadow:var(--shadow);}
+
+/* ---------- Category grid ---------- */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cat-card{
+  border:2px solid transparent;
+  background:var(--blue-light);
+  border-radius:var(--radius-sm);
+  padding:12px 8px;
+  text-align:center;
+  cursor:pointer;
+  font-family:inherit;
+  position:relative;
+}
+.cat-card .em{font-size:26px;display:block;margin-bottom:4px;}
+.cat-card .lbl{font-weight:700;font-size:13px;color:var(--text);}
+.cat-card .best{
+  font-size:10.5px;
+  color:var(--orange);
+  font-weight:800;
+  margin-top:2px;
+}
+.cat-card.selected{border-color:var(--blue);background:white;box-shadow:var(--shadow);}
+
+.random-btn{
+  width:100%;
+  margin-top:10px;
+  background:none;
+  border:2px dashed #B9D3EE;
+  border-radius:var(--radius-sm);
+  padding:10px;
+  font-family:inherit;
+  font-weight:700;
+  font-size:13.5px;
+  color:var(--blue-dark);
+  cursor:pointer;
+}
+
+/* ---------- Duration chips ---------- */
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{
+  border:2px solid var(--blue-light);
+  background:white;
+  border-radius:20px;
+  padding:8px 16px;
+  font-family:inherit;
+  font-weight:700;
+  font-size:13.5px;
+  color:var(--text);
+  cursor:pointer;
+}
+.chip.selected{background:var(--blue);border-color:var(--blue);color:white;}
+
+/* ---------- Buttons ---------- */
+.btn-main{
+  width:100%;
+  background:var(--blue);
+  color:white;
+  border:none;
+  border-radius:var(--radius-sm);
+  padding:15px;
+  font-family:inherit;
+  font-weight:800;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:var(--shadow);
+  margin-top:6px;
+}
+.btn-main:disabled{background:#C7D8EA;box-shadow:none;cursor:not-allowed;}
+.btn-main:active:not(:disabled){transform:scale(0.985);}
+.btn-secondary{
+  width:100%;
+  background:white;
+  color:var(--text-light);
+  border:2px solid #E3EBF3;
+  border-radius:var(--radius-sm);
+  padding:13px;
+  font-family:inherit;
+  font-weight:700;
+  font-size:14.5px;
+  cursor:pointer;
+  margin-top:8px;
+}
+.btn-row{display:flex;gap:10px;margin-top:6px;}
+.btn-row .btn-main, .btn-row .btn-secondary{margin-top:0;}
+
+/* ---------- Info / details ---------- */
+details.info{
+  background:var(--blue-light);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+  margin-bottom:14px;
+  font-size:13px;
+  color:var(--text);
+}
+details.info summary{font-weight:800;color:var(--blue-dark);cursor:pointer;font-size:13.5px;}
+details.info p{margin:8px 0 0;line-height:1.5;}
+
+.reset-link{
+  display:block;
+  text-align:center;
+  font-size:12px;
+  color:var(--text-light);
+  margin-top:18px;
+  text-decoration:underline;
+  cursor:pointer;
+}
+
+.start-recap{
+  text-align:center;
+  font-weight:800;
+  font-size:14px;
+  color:var(--blue-dark);
+  background:var(--blue-light);
+  border-radius:var(--radius-sm);
+  padding:9px;
+  margin-bottom:8px;
+}
+
+/* ---------- Instructions screen ---------- */
+.instr-recap{
+  font-weight:800;
+  color:var(--blue-dark);
+  font-size:14px;
+  margin-bottom:6px;
+}
+.instruction-text{
+  font-size:16.5px;
+  line-height:1.65;
+  color:var(--text);
+  margin:8px 0 16px;
+}
+
+/* ---------- Game screen ---------- */
+.game-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:14px;
+}
+.game-cat{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;color:var(--blue-dark);}
+.time-timer{
+  --pct:100;
+  --timer-color:#4A90D9;
+  width:78px;height:78px;
+  border-radius:50%;
+  background: conic-gradient(var(--timer-color) calc(var(--pct) * 1%), #E3EBF6 0);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  transition: background 0.3s linear;
+}
+.time-timer-inner{
+  width:58px;height:58px;
+  border-radius:50%;
+  background:white;
+  display:flex;align-items:center;justify-content:center;
+  font-size:21px;
+  font-weight:900;
+  color:var(--blue-dark);
+  transition: color 0.3s linear;
+}
+.time-timer.warn .time-timer-inner{color:#B5790E;}
+.time-timer.danger .time-timer-inner{color:#B53636;}
+.time-timer.pulse{animation:timerPulse 1s ease-in-out infinite;}
+@keyframes timerPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.07);}}
+@media (prefers-reduced-motion:reduce){
+  .time-timer.pulse{animation:none;}
+  .time-timer{transition:none;}
+}
+
+.input-row{display:flex;gap:8px;margin-bottom:6px;}
+.input-row input{
+  flex:1;
+  border:2px solid var(--blue-light);
+  border-radius:var(--radius-sm);
+  padding:13px 14px;
+  font-family:inherit;
+  font-size:15px;
+  outline:none;
+}
+.input-row input:focus{border-color:var(--blue);}
+.input-row button{
+  background:var(--blue);
+  color:white;
+  border:none;
+  border-radius:var(--radius-sm);
+  padding:0 18px;
+  font-weight:800;
+  font-size:14px;
+  cursor:pointer;
+}
+.feedback{
+  min-height:20px;
+  font-size:13.5px;
+  font-weight:700;
+  margin:2px 4px 10px;
+}
+.feedback.ok{color:var(--green);}
+.feedback.dup{color:var(--orange);}
+.feedback.unk{color:var(--text-light);}
+
+.mic-row{display:flex;align-items:center;gap:10px;margin:6px 2px 2px;}
+.mic-btn{
+  width:46px;height:46px;
+  border-radius:50%;
+  background:var(--blue-light);
+  border:2px solid var(--blue);
+  color:var(--blue-dark);
+  font-size:19px;
+  cursor:pointer;
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.mic-btn.active{background:var(--blue);color:white;}
+.mic-btn:disabled{opacity:0.45;cursor:not-allowed;}
+.mic-status{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-light);font-weight:700;}
+.mic-dot{width:9px;height:9px;border-radius:50%;background:#C9D3DC;display:inline-block;}
+.mic-dot.listening{background:var(--green);animation:micPulse 1.4s ease-in-out infinite;}
+@keyframes micPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+@media (prefers-reduced-motion:reduce){.mic-dot.listening{animation:none;}}
+.interim-text{font-size:12.5px;color:var(--text-light);font-style:italic;min-height:18px;margin:4px 2px 8px;}
+
+.found-count{font-size:13.5px;color:var(--text-light);margin:0 2px 8px;font-weight:700;}
+.chips-area{display:flex;flex-wrap:wrap;gap:7px;min-height:40px;}
+.word-chip{
+  background:var(--green-light);
+  color:#2C7A45;
+  border-radius:16px;
+  padding:7px 12px;
+  font-size:13px;
+  font-weight:700;
+}
+.word-chip.unk{background:#EEF1F4;color:var(--text-light);}
+
+/* ---------- Groupe mode ---------- */
+.group-counter{
+  text-align:center;
+  margin:10px 0 18px;
+}
+.group-counter .num{
+  font-size:58px;
+  font-weight:900;
+  color:var(--blue-dark);
+  line-height:1;
+}
+.group-counter .lbl{font-size:13px;color:var(--text-light);font-weight:700;margin-top:2px;}
+.group-btns{display:flex;gap:12px;align-items:center;justify-content:center;}
+.group-plus{
+  background:var(--blue);
+  color:white;
+  border:none;
+  border-radius:50%;
+  width:96px;height:96px;
+  font-size:34px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:var(--shadow);
+}
+.group-plus:active{transform:scale(0.95);}
+.group-minus{
+  background:white;
+  border:2px solid #E3EBF3;
+  color:var(--text-light);
+  border-radius:50%;
+  width:52px;height:52px;
+  font-size:20px;
+  font-weight:800;
+  cursor:pointer;
+}
+.group-note-toggle{
+  text-align:center;
+  font-size:12.5px;
+  color:var(--blue-dark);
+  font-weight:700;
+  cursor:pointer;
+  margin-top:14px;
+  text-decoration:underline;
+}
+textarea.group-note{
+  width:100%;
+  border:2px solid var(--blue-light);
+  border-radius:var(--radius-sm);
+  padding:10px 12px;
+  font-family:inherit;
+  font-size:13.5px;
+  margin-top:8px;
+  resize:vertical;
+  min-height:60px;
+}
+
+/* ---------- End screen ---------- */
+.congrats-msg{
+  font-size:17px;
+  font-weight:800;
+  color:var(--blue-dark);
+  text-align:center;
+  margin:4px 0 2px;
+}
+#fireworksCanvas{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  pointer-events:none;
+  z-index:60;
+}
+.end-hero{text-align:center;padding:8px 0 4px;}
+.end-hero .big-num{font-size:48px;font-weight:900;color:var(--blue-dark);line-height:1;}
+.end-hero .big-lbl{font-size:13.5px;color:var(--text-light);font-weight:700;margin-top:2px;}
+.record-badge{
+  display:inline-block;
+  background:var(--orange-light);
+  color:#B5790E;
+  font-weight:800;
+  font-size:12.5px;
+  padding:5px 12px;
+  border-radius:14px;
+  margin-top:8px;
+}
+.jeton-gain{
+  text-align:center;
+  font-weight:800;
+  color:var(--blue);
+  font-size:14.5px;
+  margin:6px 0 12px;
+}
+.more-words .word-chip{
+  background:white;
+  border:1.5px solid var(--blue-light);
+  color:var(--blue-dark);
+}
+
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ WELCOME / CONSIGNE SCREEN (tout premier écran) ============ -->
+  <div id="screen-welcome" class="screen active">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-emoji">🎯</span>
+        <div>
+          <h1>Rafale de Mots</h1>
+          <p>Jeu de fluence catégorielle</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Avant de commencer</div>
+      <p class="instruction-text" id="welcomeText">Bienvenue dans Rafale de Mots ! Le but : trouver le plus de mots possible dans une catégorie (animaux, boissons, véhicules, et bien d'autres) avant la fin du temps. Tu peux écrire les mots, ou les dire à voix haute avec le micro 🎤. Quand le temps est fini, on regarde ensemble combien de mots ont été trouvés, et tu gagnes des jetons ! Appuie sur « Continuer » pour choisir comment jouer.</p>
+      <button class="btn-secondary" id="welcomeTtsBtn">🔊 Écouter la consigne</button>
+    </div>
+    <button class="btn-main" id="welcomeContinueBtn">Continuer ▶</button>
+  </div>
+
+  <!-- ============ HOME SCREEN ============ -->
+  <div id="screen-home" class="screen">
+    <div class="topbar">
+      <div class="brand">
+        <span class="brand-emoji">🎯</span>
+        <div>
+          <h1>Rafale de Mots</h1>
+          <p>Jeu de fluence catégorielle</p>
+        </div>
+      </div>
+      <button class="icon-btn" id="soundToggle" title="Activer/couper le son">🔈</button>
+    </div>
+
+    <div class="jeton-rule"><svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:2px;" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#F2A93B" stroke="#C97F12" stroke-width="1.6"/><circle cx="12" cy="12" r="7.6" fill="none" stroke="#C97F12" stroke-width="1.3" opacity="0.55"/><path d="M12 6.6 L13.6 10 L17.3 10.5 L14.7 13 L15.3 16.6 L12 14.8 L8.7 16.6 L9.3 13 L6.7 10.5 L10.4 10 Z" fill="#C97F12" opacity="0.85"/></svg> Au moins 2 mots trouvés : 3 jetons en 45 s · 2 jetons en 60 s · 1 jeton en 90 s</div>
+
+    <details class="info">
+      <summary>ℹ️ À quoi ça sert ?</summary>
+      <p>Ce jeu reprend le principe des tâches de <strong>fluence verbale catégorielle</strong> utilisées en neuropsychologie : trouver le plus de mots possible dans une catégorie, en un temps limité. Ça sollicite la mémoire sémantique, la flexibilité de pensée et la rapidité à aller chercher les mots. Le mode <strong>Solo</strong> est pour s'entraîner seul·e, à l'écrit ou à la voix 🎤. Le mode <strong>Solo Oral</strong> compte automatiquement les mots dits dans le micro (utile pour un atelier en groupe), avec aussi des boutons +1/−1 pour compter à la main. Les accents ne sont jamais comptés comme des erreurs. La dictée vocale fonctionne avec Chrome et une connexion internet ; elle n'est pas disponible sur tous les navigateurs (par ex. Safari).</p>
+    </details>
+
+    <div class="section-title">Mode de jeu</div>
+    <div class="mode-grid" id="modeGrid">
+      <button class="mode-btn" data-mode="solo">
+        <span class="em">✍️</span>
+        <span class="lbl">Solo</span>
+        <span class="sub">à l'écrit</span>
+      </button>
+      <button class="mode-btn" data-mode="groupe">
+        <span class="em">🗣️</span>
+        <span class="lbl">Solo Oral</span>
+      </button>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <div class="section-title">Catégorie</div>
+      <div class="cat-grid" id="catGrid"></div>
+      <button class="random-btn" id="randomCatBtn">🎲 Choisir une catégorie au hasard</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Durée</div>
+      <div class="chip-row" id="durationRow">
+        <button class="chip" data-d="45">45 s</button>
+        <button class="chip selected" data-d="60">60 s</button>
+        <button class="chip" data-d="90">90 s</button>
+      </div>
+    </div>
+
+    <div class="start-recap" id="startRecap"></div>
+    <button class="btn-main" id="startBtn" disabled>Choisis une catégorie pour commencer</button>
+
+    <div class="reset-link" id="resetStatsLink">Réinitialiser mes statistiques</div>
+  </div>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <div id="screen-game" class="screen">
+    <div class="game-head">
+      <div class="game-cat"><span id="gameCatEmoji">🐾</span><span id="gameCatLabel">Animaux</span></div>
+      <div class="time-timer" id="timerWheel">
+        <div class="time-timer-inner" id="timerInner">60</div>
+      </div>
+    </div>
+
+    <!-- MICRO (partagé entre les modes) -->
+    <div class="mic-row">
+      <button class="mic-btn" id="micBtn" title="Dictée vocale">🎤</button>
+      <div class="mic-status"><span class="mic-dot" id="micDot"></span><span id="micStatusText">Micro éteint</span></div>
+    </div>
+    <div class="interim-text" id="interimText"></div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+
+    <!-- SOLO mode UI -->
+    <div id="soloUI">
+      <div class="input-row">
+        <input type="text" id="wordInput" placeholder="Tape un mot et valide ⏎" autocomplete="off">
+        <button id="addWordBtn">Ajouter</button>
+      </div>
+      <div class="found-count" id="foundCount">0 mot trouvé</div>
+      <div class="chips-area" id="chipsArea"></div>
+    </div>
+
+    <!-- GROUPE mode UI -->
+    <div id="groupUI" style="display:none;">
+      <div class="group-counter">
+        <div class="num" id="groupNum">0</div>
+        <div class="lbl">mots trouvés par le groupe</div>
+      </div>
+      <div class="group-btns">
+        <button class="group-minus" id="groupMinusBtn">−1</button>
+        <button class="group-plus" id="groupPlusBtn">+1</button>
+      </div>
+      <div class="chips-area" id="groupChips" style="margin-top:10px;"></div>
+      <div class="group-note-toggle" id="groupNoteToggle">📝 Noter les mots dits (optionnel)</div>
+      <textarea class="group-note" id="groupNote" style="display:none;" placeholder="Ex : chien, chat, lion..."></textarea>
+    </div>
+
+    <button class="btn-main" id="startTimerBtn">▶ Démarrer le chrono</button>
+    <button class="btn-secondary" id="stopBtn">⬅ Annuler</button>
+  </div>
+
+  <!-- ============ END SCREEN ============ -->
+  <div id="screen-end" class="screen">
+    <div id="congratsMsg" class="congrats-msg"></div>
+    <div class="card end-hero">
+      <div id="endBigNum" class="big-num">0</div>
+      <div class="big-lbl" id="endBigLbl">mots trouvés</div>
+      <div id="recordBadge" class="record-badge" style="display:none;">🏆 Nouveau record !</div>
+    </div>
+
+    <div id="jetonGainRow" class="jeton-gain"></div>
+
+    <div class="card" id="endFoundCard">
+      <div class="section-title">Mots trouvés</div>
+      <div class="chips-area" id="endFoundChips"></div>
+    </div>
+
+    <div class="card more-words" id="endMoreCard">
+      <div class="section-title">💡 Pour aller plus loin</div>
+      <div class="chips-area" id="endMoreChips"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" id="replayBtn">🔁 Rejouer</button>
+      <button class="btn-main" id="homeBtn" style="margin-top:0;">🏠 Accueil</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   DONNÉES — banques de mots par catégorie
+   ============================================================ */
+const CATEGORIES = {
+  animaux: { label:"Animaux", emoji:"🐾", words:["chien","chat","cheval","vache","lion","tigre","éléphant","girafe","zèbre","singe","ours","loup","renard","lapin","souris","rat","hamster","cochon","mouton","chèvre","poule","coq","canard","oie","pigeon","aigle","hibou","chouette","corbeau","perroquet","dauphin","baleine","requin","poisson","crabe","crevette","poulpe","méduse","tortue","serpent","lézard","crocodile","grenouille","abeille","papillon","araignée","fourmi","coccinelle","escargot","kangourou","koala","panda","gorille","chimpanzé","hippopotame","rhinocéros","chameau","lama","pingouin","phoque","otarie","hérisson","écureuil","taupe","chauve-souris","vautour","flamant","paon","cygne","autruche","dromadaire","bison","buffle","antilope","gazelle","sanglier","blaireau","belette","marmotte","castor","loutre","raton laveur","paresseux","tatou","coyote","hyène","guépard","léopard","jaguar","puma","lynx","mangouste","suricate","orang-outan","gibbon","babouin","faucon","buse","héron","cigogne","mouette","goéland","albatros","toucan","colibri","perruche","pie","geai","merle","moineau","hirondelle","rouge-gorge","caille","faisan","condor"]},
+  fruits_legumes: { label:"Fruits & légumes", emoji:"🍎", words:["pomme","banane","orange","fraise","framboise","kiwi","ananas","mangue","poire","pêche","abricot","cerise","raisin","pastèque","melon","citron","pamplemousse","mandarine","clémentine","figue","datte","noix de coco","carotte","tomate","concombre","courgette","pomme de terre","oignon","ail","poireau","salade","chou","brocoli","épinard","haricot","petit pois","poivron","aubergine","radis","navet","betterave","champignon","citrouille","courge","artichaut","asperge","céleri","fenouil","maïs","lentille","myrtille","mûre","groseille","cassis","litchi","papaye","fruit de la passion","grenade","nectarine","prune","mirabelle","quetsche","coing","kaki","physalis","patate douce","panais","topinambour","blette","cresson","roquette","endive","chou-fleur","chou rouge","chou de Bruxelles"]},
+  metiers: { label:"Métiers", emoji:"👷", words:["boulanger","médecin","infirmier","professeur","policier","pompier","avocat","dentiste","vétérinaire","mécanicien","plombier","électricien","coiffeur","cuisinier","serveur","agriculteur","pêcheur","pilote","facteur","vendeur","caissier","comptable","architecte","ingénieur","journaliste","photographe","musicien","acteur","chanteur","danseur","peintre","écrivain","juge","secrétaire","informaticien","programmeur","boucher","pâtissier","fleuriste","jardinier","menuisier","maçon","couturier","esthéticienne","kinésithérapeute","psychologue","éducateur","ambulancier","chauffeur","traducteur","pharmacien","sage-femme","aide-soignant","magistrat","notaire","gendarme","steward","hôtesse de l'air","réceptionniste","développeur web","designer graphique","webmaster","youtubeur","influenceur","streameur","apiculteur","viticulteur","horticulteur","paysagiste","géomètre","urbaniste","traiteur","sommelier","chocolatier","tatoueur"]},
+  vetements: { label:"Vêtements", emoji:"👕", words:["pantalon","chemise","t-shirt","pull","robe","jupe","veste","manteau","écharpe","bonnet","casquette","chapeau","gants","chaussettes","chaussures","baskets","bottes","sandales","short","maillot de bain","pyjama","gilet","costume","cravate","ceinture","sac à dos","jean","legging","sweat","doudoune","foulard","débardeur","salopette","kimono","blouson","jogging","collants","tablier","chemisier","polo","survêtement","veste en jean","blazer","trench","parka","bermuda","caleçon","culotte","soutien-gorge","body","combinaison","peignoir","chaussons","tongs","mocassins","escarpins","talons","bonnet de bain","gilet de sauvetage","cache-cou"]},
+  sports: { label:"Sports", emoji:"⚽", words:["football","basketball","tennis","natation","athlétisme","rugby","volleyball","handball","cyclisme","judo","karaté","boxe","escalade","ski","snowboard","golf","badminton","gymnastique","danse","équitation","surf","skateboard","patinage","aviron","escrime","tir à l'arc","pétanque","course à pied","marathon","triathlon","plongée","voile","water-polo","hockey","baseball","cricket","taekwondo","trampoline","parkour","randonnée","tir sportif","lutte","haltérophilie","fitness","yoga","pilates","zumba","BMX","VTT","char à voile","kitesurf","paddle","apnée","biathlon","futsal","beach-volley","roller hockey","curling","bobsleigh","saut à la perche"]},
+  maison: { label:"Objets de la maison", emoji:"🛋️", words:["table","chaise","lit","armoire","canapé","télévision","lampe","miroir","tapis","rideau","coussin","étagère","bureau","ordinateur","téléphone","frigo","four","micro-ondes","lave-linge","aspirateur","poubelle","balai","serviette","oreiller","couverture","horloge","vase","plante","cadre","fauteuil","commode","placard","évier","robinet","douche","baignoire","grille-pain","bouilloire","cafetière","mixeur","plaque de cuisson","hotte","ventilateur","radiateur","buffet","vaisselier","penderie","porte-manteau","chandelier","réveil","ampoule","interrupteur","prise électrique","rallonge","escabeau","échelle","corde à linge","sèche-linge","fer à repasser","planche à repasser","balance","détecteur de fumée"]},
+  instruments: { label:"Instruments de musique", emoji:"🎸", words:["guitare","piano","violon","batterie","flûte","trompette","saxophone","clarinette","violoncelle","harpe","accordéon","tambour","xylophone","triangle","maracas","ukulélé","orgue","contrebasse","trombone","tuba","harmonica","banjo","castagnettes","cor","grosse caisse","cymbale","synthétiseur","cornemuse","mandoline","djembé","sitar","kora","balafon","piano à queue","piano droit","guitare électrique","guitare basse","batterie électronique","orgue de Barbarie","flûte traversière","flûte à bec","cornet à pistons","clavecin","lyre","vibraphone","marimba","bongos","congas","tam-tam","kalimba","ocarina","basson","hautbois","cithare","luth","mélodica","carillon","tabla","didgeridoo","fifre","biniou","vielle à roue","pipeau"]},
+  pays: { label:"Pays", emoji:"🌍", words:["France","Espagne","Italie","Allemagne","Belgique","Portugal","Angleterre","Suisse","Maroc","Algérie","Tunisie","Sénégal","Canada","États-Unis","Mexique","Brésil","Japon","Chine","Inde","Égypte","Grèce","Turquie","Russie","Pologne","Pays-Bas","Suède","Norvège","Australie","Argentine","Chili","Colombie","Pérou","Vietnam","Thaïlande","Corée du Sud","Irlande","Écosse","Autriche","Danemark","Finlande","Madagascar","Côte d'Ivoire","Cameroun","Mali","Burkina Faso","Niger","Tchad","Liban","Israël","Émirats arabes unis","Arabie saoudite","Iran","Pakistan","Indonésie","Philippines","Malaisie","Singapour","Nouvelle-Zélande","Islande","Roumanie","Hongrie","Croatie","Ukraine","Serbie","Bulgarie"]},
+  couleurs: { label:"Couleurs", emoji:"🎨", words:["rouge","bleu","vert","jaune","orange","violet","rose","marron","noir","blanc","gris","beige","turquoise","bordeaux","doré","argenté","kaki","corail","indigo","fuchsia","ivoire","anthracite","bleu marine","bleu ciel","vert pomme","vert foncé","jaune citron","rose pâle","mauve","lilas","pourpre","ocre","sable","crème","émeraude","saumon","prune","châtain","blond","roux","cyan","magenta","cuivré","bronze","pastel","olive","taupe","rubis","brique","aubergine","écarlate","cramoisi","fauve","noisette","brun","vermillon","carmin","grenat","améthyste","jade","caramel","moutarde","abricot","framboise","lavande","parme","azur","anis","gris perle","blanc cassé","nacré","multicolore"]},
+  ville: { label:"Dans la ville", emoji:"🏙️", words:["feu rouge","feu tricolore","passage piéton","trottoir","lampadaire","banc","poubelle","abribus","arrêt de bus","parc","square","fontaine","statue","pont","tunnel","rond-point","parking","panneau","panneau stop","panneau sens interdit","céder le passage","zone 30","radar","ralentisseur","dos d'âne","barrière","péage","carrefour","giratoire","passage à niveau","piste cyclable","mairie","école","collège","lycée","bibliothèque","hôpital","pharmacie","commissariat","caserne de pompiers","banque","poste","supermarché","hypermarché","supérette","centre commercial","boulangerie","boucherie","marché","épicerie","primeur","fromagerie","poissonnerie","pâtisserie","librairie","papeterie","bijouterie","parfumerie","opticien","fleuriste","pressing","cordonnerie","friperie","magasin de vêtements","magasin de chaussures","magasin de jouets","magasin de sport","animalerie","quincaillerie","bureau de tabac","salon de coiffure","institut de beauté","garage automobile","station-service","agence immobilière","agence de voyage","auto-école","laverie automatique","traiteur","glacier","chocolaterie","caviste","église","cinéma","théâtre","musée","stade","piscine","gare","station de métro","aéroport","immeuble","gratte-ciel","maison","pavillon","résidence","tour","lotissement","place","avenue","boulevard","rue piétonne","terrasse","café","restaurant","hôtel","kiosque","distributeur de billets","vélo en libre-service","zone piétonne","aire de jeux"]},
+  corps: { label:"Parties du corps", emoji:"🧍", words:["tête","cheveux","front","sourcil","œil","paupière","cil","nez","narine","joue","bouche","lèvre","dent","langue","menton","oreille","cou","nuque","épaule","bras","coude","avant-bras","poignet","main","doigt","pouce","index","majeur","annulaire","auriculaire","ongle","poitrine","dos","ventre","nombril","hanche","taille","fesse","jambe","cuisse","genou","mollet","tibia","pied","talon","orteil","cheville","paume","aisselle","omoplate","colonne vertébrale","côte","muscle","cœur","poumon","visage","peau","gorge","mâchoire","tempe","crâne","cerveau","foie","estomac","rein","intestin","squelette","sang","veine","artère","nerf","tendon","biceps","triceps","barbe","moustache","clavicule","sternum","bassin"]}
+};
+
+/* ============================================================
+   NORMALISATION (pour comparer les mots tapés à la banque)
+   ============================================================ */
+const STOPWORDS = new Set(["le","la","les","l","un","une","des","de","du","au","aux","d","j","n","c","m","t","s","qu","et"]);
+const FILLERS = new Set(["euh","ben","bah","donc","alors","voila","voilà","heu","hum"]);
+
+function normalize(str){
+  if(!str) return "";
+  let s = str.toLowerCase();
+  s = s.replace(/œ/g,"oe").replace(/æ/g,"ae");
+  s = s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); // supprime TOUS les accents (jamais comptés comme une erreur)
+  s = s.replace(/['’]/g," ");
+  s = s.replace(/-/g," ");
+  s = s.replace(/[^a-z0-9\s]/g," ");
+  let tokens = s.split(/\s+/).filter(Boolean).filter(t => !STOPWORDS.has(t));
+  return tokens.join(" ").trim();
+}
+function depluralize(s){
+  let tokens = s.split(" ");
+  if(!tokens.length) return s;
+  let last = tokens[tokens.length-1];
+  if(last.length>3 && (last.endsWith("s")||last.endsWith("x"))){
+    tokens[tokens.length-1] = last.slice(0,-1);
+  }
+  return tokens.join(" ");
+}
+
+// Index normalisé par catégorie : norm -> mot d'affichage
+const CAT_INDEX = {};
+Object.keys(CATEGORIES).forEach(key => {
+  const idx = {};
+  CATEGORIES[key].words.forEach(w => {
+    const n = normalize(w);
+    idx[n] = w;
+    const dp = depluralize(n);
+    if(!(dp in idx)) idx[dp] = w;
+  });
+  CAT_INDEX[key] = idx;
+});
+
+/* ============================================================
+   STOCKAGE LOCAL (jetons, records, son)
+   ============================================================ */
+function getBest(catKey){ return parseInt(localStorage.getItem("fluence_best_"+catKey)||"0",10); }
+function setBest(catKey, score){
+  if(score > getBest(catKey)){ localStorage.setItem("fluence_best_"+catKey, String(score)); return true; }
+  return false;
+}
+function getSoundOn(){ return localStorage.getItem("fluence_sound") !== "off"; }
+function setSoundOn(v){ localStorage.setItem("fluence_sound", v ? "on" : "off"); }
+
+/* Barème des jetons : plus la partie est courte, plus chaque mot rapporte */
+function calcJetons(duration, words){
+  if(words < 2) return 0;
+  if(duration === 45) return 3;
+  if(duration === 60) return 2;
+  if(duration === 90) return 1;
+  return 0;
+}
+
+/* ============================================================
+   SON (bips générés, sans fichier externe)
+   ============================================================ */
+let audioCtx = null;
+function beep(freq, dur, vol){
+  if(!state.soundOn) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.value = vol || 0.05;
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    osc.stop(audioCtx.currentTime + dur);
+  }catch(e){ /* audio non disponible, on ignore silencieusement */ }
+}
+
+/* ============================================================
+   ÉTAT DU JEU
+   ============================================================ */
+const state = {
+  mode: null,
+  categoryKey: null,
+  duration: 60,
+  timeLeft: 60,
+  timerId: null,
+  found: [],            // [{display, norm}]
+  foundNorms: new Set(),
+  unrecognized: [],
+  unrecognizedSet: new Set(),
+  groupCount: 0,
+  soundOn: getSoundOn()
+};
+
+/* ============================================================
+   RÉFÉRENCES DOM
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const screens = { welcome:$("screen-welcome"), home:$("screen-home"), game:$("screen-game"), end:$("screen-end") };
+
+function showScreen(name){
+  Object.values(screens).forEach(s => s.classList.remove("active"));
+  screens[name].classList.add("active");
+}
+
+/* ============================================================
+   ÉCRAN D'ACCUEIL
+   ============================================================ */
+function renderCatGrid(){
+  const grid = $("catGrid");
+  grid.innerHTML = "";
+  Object.keys(CATEGORIES).forEach(key => {
+    const cat = CATEGORIES[key];
+    const best = getBest(key);
+    const card = document.createElement("button");
+    card.className = "cat-card" + (state.categoryKey === key ? " selected" : "");
+    card.innerHTML = '<span class="em">'+cat.emoji+'</span><span class="lbl">'+cat.label+'</span>' +
+      (state.mode==="solo" && best>0 ? '<div class="best">🏆 '+best+'</div>' : '');
+    card.addEventListener("click", () => { state.categoryKey = key; renderHome(); });
+    grid.appendChild(card);
+  });
+}
+
+function renderHome(){
+  renderCatGrid();
+
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.classList.toggle("selected", btn.dataset.mode === state.mode);
+  });
+  document.querySelectorAll("#durationRow .chip").forEach(c => {
+    c.classList.toggle("selected", parseInt(c.dataset.d,10) === state.duration);
+  });
+
+  const startBtn = $("startBtn");
+  const recap = $("startRecap");
+  if(!state.mode){
+    startBtn.disabled = true;
+    startBtn.textContent = "Choisis un mode pour commencer";
+    recap.textContent = "";
+  } else if(!state.categoryKey){
+    startBtn.disabled = true;
+    startBtn.textContent = "Choisis une catégorie pour commencer";
+    recap.textContent = "";
+  } else {
+    startBtn.disabled = false;
+    startBtn.textContent = "▶ Commencer";
+    const cat = CATEGORIES[state.categoryKey];
+    const modeLabel = state.mode === "solo" ? "✍️ Solo" : "🗣️ Solo Oral";
+    recap.textContent = modeLabel + " · " + cat.emoji + " " + cat.label + " · " + state.duration + " s";
+  }
+
+  $("soundToggle").textContent = state.soundOn ? "🔈" : "🔇";
+}
+
+document.querySelectorAll(".mode-btn").forEach(btn => {
+  btn.addEventListener("click", () => { state.mode = btn.dataset.mode; renderHome(); });
+});
+document.querySelectorAll("#durationRow .chip").forEach(c => {
+  c.addEventListener("click", () => { state.duration = parseInt(c.dataset.d,10); renderHome(); });
+});
+$("randomCatBtn").addEventListener("click", () => {
+  const keys = Object.keys(CATEGORIES);
+  let pick;
+  do { pick = keys[Math.floor(Math.random()*keys.length)]; } while(pick === state.categoryKey && keys.length>1);
+  state.categoryKey = pick;
+  renderHome();
+});
+$("soundToggle").addEventListener("click", () => {
+  state.soundOn = !state.soundOn;
+  setSoundOn(state.soundOn);
+  renderHome();
+});
+$("resetStatsLink").addEventListener("click", () => {
+  if(confirm("Réinitialiser mes records ? Cette action est définitive.")){
+    Object.keys(localStorage).filter(k => k.startsWith("fluence_")).forEach(k => {
+      if(k !== "fluence_sound") localStorage.removeItem(k);
+    });
+    renderHome();
+  }
+});
+$("startBtn").addEventListener("click", startGame);
+
+/* ============================================================
+   ÉCRAN D'ACCUEIL / CONSIGNE (tout premier écran — utile aux non-lecteurs)
+   ============================================================ */
+const SpeechSynthesisAPI = window.speechSynthesis;
+
+function speakText(text, btn){
+  if(!SpeechSynthesisAPI) return;
+  if(SpeechSynthesisAPI.speaking){
+    SpeechSynthesisAPI.cancel();
+    btn.textContent = "🔊 Écouter la consigne";
+    return;
+  }
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "fr-FR";
+  utter.rate = 0.95;
+  const voices = SpeechSynthesisAPI.getVoices();
+  const frVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("fr"));
+  if(frVoice) utter.voice = frVoice;
+  utter.onend = () => { btn.textContent = "🔊 Écouter la consigne"; };
+  btn.textContent = "⏸ Arrêter la lecture";
+  SpeechSynthesisAPI.speak(utter);
+}
+
+function stopSpeaking(){
+  if(SpeechSynthesisAPI && SpeechSynthesisAPI.speaking){ SpeechSynthesisAPI.cancel(); }
+}
+
+if(SpeechSynthesisAPI){
+  $("welcomeTtsBtn").addEventListener("click", () => {
+    speakText($("welcomeText").textContent, $("welcomeTtsBtn"));
+  });
+} else {
+  $("welcomeTtsBtn").disabled = true;
+  $("welcomeTtsBtn").title = "Lecture audio non disponible sur ce navigateur";
+  $("welcomeTtsBtn").textContent = "🔇 Lecture audio indisponible";
+}
+
+$("welcomeContinueBtn").addEventListener("click", () => {
+  stopSpeaking();
+  renderHome();
+  showScreen("home");
+});
+
+/* ============================================================
+   ÉCRAN DE JEU
+   ============================================================ */
+function startGame(){
+  state.timeLeft = state.duration;
+  state.found = [];
+  state.foundNorms = new Set();
+  state.unrecognized = [];
+  state.unrecognizedSet = new Set();
+  state.groupCount = 0;
+
+  const cat = CATEGORIES[state.categoryKey];
+  $("gameCatEmoji").textContent = cat.emoji;
+  $("gameCatLabel").textContent = cat.label;
+
+  $("soloUI").style.display = state.mode === "solo" ? "block" : "none";
+  $("groupUI").style.display = state.mode === "groupe" ? "block" : "none";
+
+  $("wordInput").value = "";
+  $("feedback").textContent = "";
+  $("foundCount").textContent = "0 mot trouvé";
+  $("chipsArea").innerHTML = "";
+  $("groupNum").textContent = "0";
+  $("groupChips").innerHTML = "";
+  $("groupNote").value = "";
+  $("groupNote").style.display = "none";
+  $("groupNoteToggle").textContent = "📝 Noter les mots dits (optionnel)";
+  if(micOn) stopMic();
+  $("interimText").textContent = "";
+
+  if(state.timerId){ clearInterval(state.timerId); }
+  state.timerId = null;
+  updateTimerDisplay();
+  showScreen("game");
+
+  // Écran "prêt" : on laisse le temps de régler le micro avant de lancer le chrono
+  $("startTimerBtn").style.display = "block";
+  $("stopBtn").textContent = "⬅ Annuler";
+
+  if(state.mode === "solo"){
+    setTimeout(() => $("wordInput").focus(), 150);
+  }
+}
+
+function beginCountdown(){
+  $("startTimerBtn").style.display = "none";
+  $("stopBtn").textContent = "⏹ Arrêter maintenant";
+  beep(880, 0.12, 0.05);
+  state.timerId = setInterval(tick, 1000);
+}
+$("startTimerBtn").addEventListener("click", beginCountdown);
+
+function updateTimerDisplay(){
+  const wheel = $("timerWheel");
+  const pct = Math.max(0, Math.min(100, (state.timeLeft / state.duration) * 100));
+  wheel.style.setProperty("--pct", pct);
+  $("timerInner").textContent = state.timeLeft;
+  wheel.classList.remove("warn","danger","pulse");
+  let color = "#4A90D9";
+  if(state.timeLeft <= 5){
+    wheel.classList.add("danger","pulse");
+    color = "#E25858";
+  } else if(state.timeLeft <= 10){
+    wheel.classList.add("warn");
+    color = "#F2A93B";
+  }
+  wheel.style.setProperty("--timer-color", color);
+}
+
+function tick(){
+  state.timeLeft--;
+  updateTimerDisplay();
+  if(state.timeLeft <= 3 && state.timeLeft > 0){ beep(440, 0.08, 0.04); }
+  if(state.timeLeft <= 0){
+    clearInterval(state.timerId);
+    state.timerId = null;
+    if(micOn) stopMic();
+    beep(330, 0.25, 0.06);
+    endGame();
+  }
+}
+
+$("stopBtn").addEventListener("click", () => {
+  if(state.timerId){
+    // la partie est en cours : on l'arrête et on affiche le résultat
+    clearInterval(state.timerId);
+    state.timerId = null;
+    if(micOn) stopMic();
+    endGame();
+  } else {
+    // le chrono n'a pas encore démarré : on annule simplement
+    if(micOn) stopMic();
+    renderHome();
+    showScreen("home");
+  }
+});
+
+/* --- mode Solo : logique de validation partagée (clavier + voix) --- */
+function registerWord(raw){
+  const norm = normalize(raw);
+  if(!norm) return null;
+  const idx = CAT_INDEX[state.categoryKey];
+  const directMatch = idx[norm] || idx[depluralize(norm)];
+
+  if(directMatch){
+    const matchNorm = normalize(directMatch);
+    if(state.foundNorms.has(matchNorm)) return {status:"dup", display:directMatch};
+    state.foundNorms.add(matchNorm);
+    state.found.push(directMatch);
+    return {status:"ok", display:directMatch};
+  } else {
+    if(state.unrecognizedSet.has(norm)) return {status:"dupunk", display:raw};
+    state.unrecognizedSet.add(norm);
+    state.unrecognized.push(raw);
+    return {status:"unk", display:raw};
+  }
+}
+
+function applyResultToUI(result){
+  if(!result) return;
+  if(result.status === "ok"){
+    addChip(result.display, false);
+    showFeedback("ok", "✅ Bravo, « " + result.display + " » compte !");
+    beep(660, 0.08, 0.04);
+  } else if(result.status === "dup"){
+    showFeedback("dup", "Déjà trouvé : « " + result.display + " »");
+  } else if(result.status === "unk"){
+    addChip(result.display, true);
+    showFeedback("unk", "🤔 Mot non reconnu — noté quand même, à vérifier après.");
+  } else if(result.status === "dupunk"){
+    showFeedback("dup", "Déjà noté.");
+  }
+  $("foundCount").textContent = state.found.length + (state.found.length===1 ? " mot trouvé" : " mots trouvés");
+}
+
+function submitWord(){
+  const raw = $("wordInput").value.trim();
+  if(!raw) return;
+  applyResultToUI(registerWord(raw));
+  $("wordInput").value = "";
+  $("wordInput").focus();
+}
+
+/* --- traitement d'un texte dicté à la voix : peut contenir un ou plusieurs mots --- */
+function processSpokenText(text){
+  text = (text || "").trim();
+  if(!text) return;
+
+  // 1) on essaie d'abord la phrase entière (utile pour "jus d'orange", "tir à l'arc"...)
+  const wholeResult = registerWord(text);
+  if(wholeResult && (wholeResult.status === "ok" || wholeResult.status === "dup")){
+    applyResultToUI(wholeResult);
+    return;
+  }
+
+  // 2) sinon on découpe en mots, au cas où plusieurs mots ont été dits sans pause
+  const tokens = text.split(/\s+/).filter(Boolean);
+  if(tokens.length <= 1){
+    applyResultToUI(wholeResult);
+    return;
+  }
+  tokens.forEach(tok => {
+    const n = normalize(tok);
+    if(!n || FILLERS.has(n)) return;
+    applyResultToUI(registerWord(tok));
+  });
+}
+function addChip(text, unk){
+  const chip = document.createElement("div");
+  chip.className = "word-chip" + (unk ? " unk" : "");
+  chip.textContent = text;
+  $("chipsArea").appendChild(chip);
+}
+function addGroupChip(text){
+  const chip = document.createElement("div");
+  chip.className = "word-chip";
+  chip.textContent = text;
+  $("groupChips").appendChild(chip);
+}
+function showFeedback(type, msg){
+  const f = $("feedback");
+  f.className = "feedback " + type;
+  f.textContent = msg;
+}
+$("addWordBtn").addEventListener("click", submitWord);
+$("wordInput").addEventListener("keydown", e => { if(e.key === "Enter") submitWord(); });
+
+/* --- traitement d'un mot dicté à la voix en mode Solo Oral : incrémente le compteur du groupe --- */
+function processSpokenTextGroup(text){
+  text = (text || "").trim();
+  if(!text) return;
+
+  const wholeResult = registerWord(text);
+  if(wholeResult && wholeResult.status === "ok"){
+    state.groupCount++;
+    $("groupNum").textContent = state.groupCount;
+    addGroupChip(wholeResult.display);
+    showFeedback("ok", "✅ « " + wholeResult.display + " » compté !");
+    beep(660, 0.06, 0.04);
+    return;
+  }
+  if(wholeResult && wholeResult.status === "dup"){
+    showFeedback("dup", "Déjà compté : « " + wholeResult.display + " »");
+    return;
+  }
+
+  // sinon, on découpe au cas où plusieurs mots ont été dits sans pause
+  const tokens = text.split(/\s+/).filter(Boolean);
+  if(tokens.length <= 1) return;
+  tokens.forEach(tok => {
+    const n = normalize(tok);
+    if(!n || FILLERS.has(n)) return;
+    const r = registerWord(tok);
+    if(r && r.status === "ok"){
+      state.groupCount++;
+      addGroupChip(r.display);
+      beep(660, 0.06, 0.04);
+    }
+  });
+  $("groupNum").textContent = state.groupCount;
+}
+
+/* --- mode Groupe --- */
+$("groupPlusBtn").addEventListener("click", () => {
+  state.groupCount++;
+  $("groupNum").textContent = state.groupCount;
+  beep(660, 0.06, 0.04);
+});
+$("groupMinusBtn").addEventListener("click", () => {
+  state.groupCount = Math.max(0, state.groupCount - 1);
+  $("groupNum").textContent = state.groupCount;
+});
+$("groupNoteToggle").addEventListener("click", () => {
+  const ta = $("groupNote");
+  const showing = ta.style.display !== "none";
+  ta.style.display = showing ? "none" : "block";
+  $("groupNoteToggle").textContent = showing ? "📝 Noter les mots dits (optionnel)" : "📝 Masquer la note";
+});
+
+/* ============================================================
+   DICTÉE VOCALE (pour ceux qui ne savent pas / peuvent pas écrire)
+   ============================================================ */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let micOn = false;
+
+function micSupported(){ return !!SpeechRecognitionAPI; }
+
+function setupRecognition(){
+  recognition = new SpeechRecognitionAPI();
+  recognition.lang = "fr-FR";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (e) => {
+    let interim = "";
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const res = e.results[i];
+      if(res.isFinal){
+        if(state.mode === "solo"){
+          processSpokenText(res[0].transcript);
+        } else {
+          processSpokenTextGroup(res[0].transcript);
+        }
+      } else {
+        interim += res[0].transcript;
+      }
+    }
+    $("interimText").textContent = interim ? "… " + interim : "";
+  };
+
+  recognition.onerror = (e) => {
+    if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+      showFeedback("unk", "🎤 Accès au micro refusé — autorise le micro dans ton navigateur.");
+      stopMic();
+    } else if(e.error === "no-speech"){
+      // rien entendu, on continue d'écouter sans message d'erreur
+    }
+  };
+
+  recognition.onend = () => {
+    const gameActive = screens.game.classList.contains("active") && state.timeLeft > 0;
+    if(micOn && gameActive){
+      try{ recognition.start(); }catch(err){ /* déjà démarré, on ignore */ }
+    } else {
+      micOn = false;
+      updateMicUI();
+    }
+  };
+}
+
+function startMic(){
+  if(!micSupported()){
+    showFeedback("unk", "🎤 La dictée vocale n'est pas disponible sur ce navigateur.");
+    return;
+  }
+  $("micStatusText").textContent = "🔍 Détection du micro…";
+
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        // Micro détecté et autorisé : on libère ce flux de test, la dictée vocale gère ensuite son propre accès
+        stream.getTracks().forEach(t => t.stop());
+        reallyStartMic();
+      })
+      .catch(err => {
+        let msg = "🎤 Micro indisponible.";
+        if(err.name === "NotFoundError" || err.name === "DevicesNotFoundError"){
+          msg = "🎤 Aucun micro détecté sur cet appareil.";
+        } else if(err.name === "NotAllowedError" || err.name === "PermissionDeniedError" || err.name === "SecurityError"){
+          msg = "🎤 Accès au micro refusé — autorise le micro dans les réglages du navigateur.";
+        } else if(err.name === "NotReadableError" || err.name === "TrackStartError"){
+          msg = "🎤 Le micro est déjà utilisé par une autre application.";
+        }
+        showFeedback("unk", msg);
+        $("micStatusText").textContent = "Micro éteint";
+      });
+  } else {
+    // Détection indisponible sur ce navigateur : on tente directement la dictée
+    reallyStartMic();
+  }
+}
+
+function reallyStartMic(){
+  if(!recognition) setupRecognition();
+  micOn = true;
+  updateMicUI();
+  try{ recognition.start(); }catch(e){ /* déjà en cours */ }
+}
+
+function stopMic(){
+  micOn = false;
+  updateMicUI();
+  if(recognition){ try{ recognition.stop(); }catch(e){} }
+  $("interimText").textContent = "";
+}
+
+function updateMicUI(){
+  $("micBtn").classList.toggle("active", micOn);
+  $("micDot").classList.toggle("listening", micOn);
+  $("micStatusText").textContent = micOn ? "🎙️ En écoute… parle dans le micro" : "Micro éteint";
+}
+
+$("micBtn").addEventListener("click", () => {
+  if(micOn){ stopMic(); } else { startMic(); }
+});
+
+if(!micSupported()){
+  $("micBtn").disabled = true;
+  $("micBtn").title = "Dictée vocale non disponible sur ce navigateur (essaie Chrome)";
+  $("micStatusText").textContent = "Dictée vocale non disponible ici";
+}
+
+/* ============================================================
+   ÉCRAN DE FIN
+   ============================================================ */
+function endGame(){
+  clearInterval(state.timerId);
+  state.timerId = null;
+  const cat = CATEGORIES[state.categoryKey];
+  let score, isRecord = false;
+
+  if(state.mode === "solo"){
+    score = state.found.length;
+    isRecord = setBest(state.categoryKey, score);
+    $("endBigLbl").textContent = score===1 ? "mot trouvé" : "mots trouvés";
+  } else {
+    score = state.groupCount;
+    $("endBigLbl").textContent = "mots trouvés par le groupe";
+  }
+
+  const jetonsGained = calcJetons(state.duration, score);
+
+  $("endBigNum").textContent = score;
+  $("recordBadge").style.display = isRecord ? "inline-block" : "none";
+  const jetonIconSmall = '<svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:-3px;margin-right:2px;" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#F2A93B" stroke="#C97F12" stroke-width="1.4"/><circle cx="12" cy="12" r="7.6" fill="none" stroke="#C97F12" stroke-width="1.1" opacity="0.55"/><path d="M12 6.6 L13.6 10 L17.3 10.5 L14.7 13 L15.3 16.6 L12 14.8 L8.7 16.6 L9.3 13 L6.7 10.5 L10.4 10 Z" fill="#C97F12" opacity="0.85"/></svg>';
+  $("jetonGainRow").innerHTML = jetonsGained > 0 ? (jetonIconSmall + "+" + jetonsGained + (jetonsGained===1 ? " jeton" : " jetons")) : "";
+
+  // Mots trouvés
+  const foundChips = $("endFoundChips");
+  foundChips.innerHTML = "";
+  if(state.mode === "solo"){
+    state.found.forEach(w => {
+      const c = document.createElement("div");
+      c.className = "word-chip";
+      c.textContent = w;
+      foundChips.appendChild(c);
+    });
+    if(state.unrecognized.length){
+      state.unrecognized.forEach(w => {
+        const c = document.createElement("div");
+        c.className = "word-chip unk";
+        c.textContent = w + " ?";
+        foundChips.appendChild(c);
+      });
+    }
+    $("endFoundCard").style.display = "block";
+  } else {
+    const noteVal = $("groupNote").value.trim();
+    if(noteVal){
+      noteVal.split(/[,\n]/).map(s=>s.trim()).filter(Boolean).forEach(w => {
+        const c = document.createElement("div");
+        c.className = "word-chip";
+        c.textContent = w;
+        foundChips.appendChild(c);
+      });
+      $("endFoundCard").style.display = "block";
+    } else {
+      $("endFoundCard").style.display = "none";
+    }
+  }
+
+  // Suggestions "pour aller plus loin"
+  const moreChips = $("endMoreChips");
+  moreChips.innerHTML = "";
+  const foundSet = state.mode === "solo" ? state.foundNorms : new Set();
+  const remaining = cat.words.filter(w => !foundSet.has(normalize(w)));
+  shuffleArray(remaining);
+  remaining.slice(0, 10).forEach(w => {
+    const c = document.createElement("div");
+    c.className = "word-chip";
+    c.textContent = w;
+    moreChips.appendChild(c);
+  });
+  $("endMoreCard").style.display = remaining.length ? "block" : "none";
+
+  $("congratsMsg").textContent = getCongratsMessage(score);
+
+  showScreen("end");
+  if(score > 0){ launchFireworks(); }
+}
+
+function getCongratsMessage(score){
+  const tiers = [
+    {min:0, max:0, msgs:["On retente ? Chaque essai compte ! 💪","Pas grave, tu vas y arriver la prochaine fois !"]},
+    {min:1, max:2, msgs:["Bien joué, tu as bien commencé ! 🙂","Beau début, continue comme ça !"]},
+    {min:3, max:6, msgs:["Bravo, beau score ! 🎉","Joli sprint de mots ! 🎉"]},
+    {min:7, max:12, msgs:["Excellent travail ! 🎉🎉","Impressionnant ! Bravo ! 🎉🎉"]},
+    {min:13, max:9999, msgs:["Incroyable, quelle fluence !! 🎉🎆","Performance exceptionnelle, bravo !! 🎆"]}
+  ];
+  for(const t of tiers){ if(score >= t.min && score <= t.max){ return t.msgs[Math.floor(Math.random()*t.msgs.length)]; } }
+  return "Bravo ! 🎉";
+}
+
+function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+/* ---------- Feu d'artifice (canvas léger, sans bibliothèque) ---------- */
+function launchFireworks(){
+  if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.id = "fireworksCanvas";
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  const colors = ["#4A90D9","#48B36B","#F2A93B","#7FB3E8","#E25858"];
+  let particles = [];
+
+  function spawnBurst(x, y){
+    for(let i=0; i<26; i++){
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.4 + Math.random() * 3.2;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        alpha: 1,
+        color: colors[Math.floor(Math.random()*colors.length)],
+        size: 2 + Math.random() * 2
+      });
+    }
+  }
+
+  const bursts = [
+    { x: canvas.width * 0.3, y: canvas.height * 0.3, delay: 0 },
+    { x: canvas.width * 0.7, y: canvas.height * 0.25, delay: 380 },
+    { x: canvas.width * 0.5, y: canvas.height * 0.4, delay: 760 }
+  ];
+  bursts.forEach((b, i) => {
+    setTimeout(() => { spawnBurst(b.x, b.y); beep(520 + i*90, 0.12, 0.045); }, b.delay);
+  });
+
+  const start = performance.now();
+  function frame(now){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.045;
+      p.alpha -= 0.014;
+      ctx.globalAlpha = Math.max(p.alpha, 0);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    particles = particles.filter(p => p.alpha > 0);
+    if(now - start < 2800){
+      requestAnimationFrame(frame);
+    } else {
+      canvas.remove();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+$("replayBtn").addEventListener("click", startGame);
+$("homeBtn").addEventListener("click", () => { renderHome(); showScreen("home"); });
+
+/* ============================================================
+   INITIALISATION
+   ============================================================ */
+renderHome();
+showScreen("welcome");
+
+})();
+</script>
+</body>
+</html>
